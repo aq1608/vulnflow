@@ -18,14 +18,18 @@ class AsyncWebCrawler:
         self.discovered_urls: Dict[str, dict] = {}
         self.forms: List[dict] = []
         self.endpoints: List[str] = []
+        self._lock = asyncio.Lock()  # For thread-safe operations
         
     async def crawl(self) -> Dict:
         """Main crawl entry point"""
         connector = aiohttp.TCPConnector(ssl=False, limit=10)
         timeout = aiohttp.ClientTimeout(total=30)
         
-        async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
-            await self._crawl_url(session, self.base_url, 0)
+        try:
+            async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+                await self._crawl_url(session, self.base_url, 0)
+        except Exception as e:
+            print(f"    [!] Crawl error: {e}")
         
         return {
             "urls": self.discovered_urls,
@@ -37,67 +41,111 @@ class AsyncWebCrawler:
     async def _crawl_url(self, session: aiohttp.ClientSession, 
                          url: str, depth: int):
         """Recursively crawl URLs"""
-        if depth > self.max_depth or len(self.visited) >= self.max_pages:
+        # Check limits
+        if depth > self.max_depth:
             return
-        if url in self.visited:
-            return
-        if not self._is_same_domain(url):
-            return
-            
-        self.visited.add(url)
+        
+        async with self._lock:
+            if len(self.visited) >= self.max_pages:
+                return
+            if url in self.visited:
+                return
+            if not self._is_same_domain(url):
+                return
+            # Mark as visited
+            self.visited.add(url)
         
         try:
             async with session.get(url, allow_redirects=True) as response:
                 content_type = response.headers.get('Content-Type', '')
                 
-                self.discovered_urls[url] = {
-                    "status": response.status,
-                    "content_type": content_type,
-                    "headers": dict(response.headers)
-                }
+                async with self._lock:
+                    self.discovered_urls[url] = {
+                        "status": response.status,
+                        "content_type": content_type,
+                        "headers": dict(response.headers)
+                    }
                 
                 if response.status == 200 and 'text/html' in content_type:
                     html = await response.text()
                     await self._parse_page(session, url, html, depth)
                         
+        except asyncio.TimeoutError:
+            async with self._lock:
+                self.discovered_urls[url] = {"error": "Timeout"}
+        except aiohttp.ClientError as e:
+            async with self._lock:
+                self.discovered_urls[url] = {"error": str(e)}
         except Exception as e:
-            self.discovered_urls[url] = {"error": str(e)}
+            async with self._lock:
+                self.discovered_urls[url] = {"error": str(e)}
     
     async def _parse_page(self, session: aiohttp.ClientSession, 
                           base_url: str, html: str, depth: int):
         """Parse HTML page to extract links and forms"""
-        soup = BeautifulSoup(html, 'html.parser')
+        try:
+            soup = BeautifulSoup(html, 'html.parser')
+        except Exception:
+            return
+        
+        # Collect URLs to crawl
+        urls_to_crawl = []
         
         # Extract links
-        tasks = []
         for link in soup.find_all('a', href=True):
             href = link['href']
-            if href.startswith('#') or href.startswith('javascript:'):
+            
+            # Skip non-HTTP links
+            if href.startswith('#') or href.startswith('javascript:') or href.startswith('mailto:'):
                 continue
-            full_url = urljoin(base_url, href).split('#')[0]
-            if full_url not in self.visited:
-                tasks.append(self._crawl_url(session, full_url, depth + 1))
+            
+            # Build full URL
+            full_url = urljoin(base_url, href)
+            
+            # Remove fragments
+            full_url = full_url.split('#')[0]
+            
+            # Check if we should crawl this URL
+            async with self._lock:
+                if full_url not in self.visited and self._is_same_domain(full_url):
+                    if len(self.visited) < self.max_pages:
+                        urls_to_crawl.append(full_url)
         
         # Extract forms
         for form in soup.find_all('form'):
             form_data = self._parse_form(base_url, form)
-            if form_data not in self.forms:
-                self.forms.append(form_data)
+            async with self._lock:
+                if form_data not in self.forms:
+                    self.forms.append(form_data)
         
         # Extract potential API endpoints from scripts
         for script in soup.find_all('script'):
             if script.string:
                 self._extract_endpoints(script.string)
         
-        # Run crawl tasks with limit
-        if tasks:
-            await asyncio.gather(*tasks[:10])
+        # Crawl discovered URLs concurrently (limit concurrency)
+        if urls_to_crawl and depth < self.max_depth:
+            # Limit to 5 concurrent requests per page
+            batch_size = 5
+            for i in range(0, len(urls_to_crawl), batch_size):
+                batch = urls_to_crawl[i:i + batch_size]
+                tasks = [
+                    self._crawl_url(session, url, depth + 1) 
+                    for url in batch
+                ]
+                # Use gather with return_exceptions to prevent one failure from stopping all
+                await asyncio.gather(*tasks, return_exceptions=True)
     
     def _parse_form(self, base_url: str, form) -> dict:
         """Parse HTML form element"""
         action = form.get('action', '')
+        if action:
+            action_url = urljoin(base_url, action)
+        else:
+            action_url = base_url
+            
         return {
-            "action": urljoin(base_url, action) if action else base_url,
+            "action": action_url,
             "method": form.get('method', 'GET').upper(),
             "inputs": [
                 {
@@ -114,20 +162,29 @@ class AsyncWebCrawler:
         """Extract API endpoints from JavaScript"""
         patterns = [
             r'["\']/(api|v\d)/[^"\']+["\']',
-            r'fetch\(["\']([^"\']+)["\']',
-            r'axios\.(get|post|put|delete)\(["\']([^"\']+)["\']'
+            r'fetch\s*\(\s*["\']([^"\']+)["\']',
+            r'axios\.(get|post|put|delete)\s*\(\s*["\']([^"\']+)["\']',
+            r'\.ajax\s*\(\s*\{[^}]*url\s*:\s*["\']([^"\']+)["\']',
         ]
+        
         for pattern in patterns:
-            matches = re.findall(pattern, script_content)
-            for match in matches:
-                if isinstance(match, tuple):
-                    self.endpoints.extend(match)
-                else:
-                    self.endpoints.append(match)
+            try:
+                matches = re.findall(pattern, script_content, re.IGNORECASE)
+                for match in matches:
+                    if isinstance(match, tuple):
+                        for m in match:
+                            if m and m.startswith('/'):
+                                self.endpoints.append(m)
+                    elif match and match.startswith('/'):
+                        self.endpoints.append(match)
+            except re.error:
+                pass
     
     def _is_same_domain(self, url: str) -> bool:
         """Check if URL belongs to same domain"""
         try:
-            return urlparse(url).netloc == urlparse(self.base_url).netloc
-        except:
+            base_domain = urlparse(self.base_url).netloc.lower()
+            url_domain = urlparse(url).netloc.lower()
+            return base_domain == url_domain
+        except Exception:
             return False
