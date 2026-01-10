@@ -1,0 +1,253 @@
+# websec/pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vulnflow"
+version = "1.0.1"
+description = "Web Vulnerability Scanner with Contextual Remediation"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "websec", email = "your.email@example.com"}
+]
+keywords = [
+    "security",
+    "vulnerability",
+    "scanner",
+    "web",
+    "penetration-testing",
+    "owasp"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Internet :: WWW/HTTP",
+]
+
+# Core dependencies
+dependencies = [
+    "aiohttp>=3.8.0",
+    "beautifulsoup4>=4.11.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "pydantic>=2.0.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "jinja2>=3.1.0",
+    "requests>=2.28.0",
+]
+
+[project.optional-dependencies]
+# Development dependencies
+dev = [
+    "pytest>=7.3.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "mypy>=1.3.0",
+    "ruff>=0.0.270",
+    "isort>=5.12.0",
+]
+
+# Testing dependencies
+test = [
+    "pytest>=7.3.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "httpx>=0.24.0",
+    "respx>=0.20.0",
+]
+
+# Documentation dependencies
+docs = [
+    "mkdocs>=1.4.0",
+    "mkdocs-material>=9.0.0",
+]
+
+# All optional dependencies
+all = [
+    "vulnflow[dev,test,docs]",
+]
+
+[project.urls]
+Homepage = "https://github.com/aq1608/vulnflow"
+Documentation = "https://github.com/aq1608/vulnflow#readme"
+Repository = "https://github.com/aq1608/vulnflow.git"
+Issues = "https://github.com/aq1608/vulnflow/issues"
+Changelog = "https://github.com/aq1608/vulnflow/blob/main/CHANGELOG.md"
+
+[project.scripts]
+# CLI entry point
+vulnflow = "cli.main:main"
+
+# ============================================
+# Tool Configurations
+# ============================================
+
+[tool.setuptools]
+# Tell setuptools this is the package directory
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+# Find all packages in current directory
+where = ["."]
+include = ["*"]
+exclude = ["tests*", "docs*"]
+
+[tool.setuptools.package-data]
+# Include these file types in the package
+"*" = ["*.html", "*.css", "*.js", "*.json", "*.yaml", "*.yml", "*.txt", "*.md"]
+
+# ============================================
+# Pytest Configuration
+# ============================================
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "security: marks tests as security tests",
+]
+
+# ============================================
+# Coverage Configuration
+# ============================================
+
+[tool.coverage.run]
+source = ["."]
+branch = true
+omit = [
+    "tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+show_missing = true
+fail_under = 70
+
+# ============================================
+# Black Configuration (Code Formatter)
+# ============================================
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | __pycache__
+)/
+'''
+
+# ============================================
+# Ruff Configuration (Linter)
+# ============================================
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "C4",     # flake8-comprehensions
+    "PT",     # flake8-pytest-style
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "UP",     # pyupgrade
+    "S",      # flake8-bandit (security)
+]
+ignore = [
+    "E501",   # line too long (handled by black)
+    "B008",   # function calls in argument defaults
+    "S101",   # assert used
+    "S105",   # hardcoded password (false positives in tests)
+    "S106",   # hardcoded password (false positives in tests)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "S106"]
+"__init__.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["crawler", "scanner", "detector", "remediation", "reports", "api", "cli"]
+
+# ============================================
+# MyPy Configuration (Type Checking)
+# ============================================
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+# ============================================
+# isort Configuration (Import Sorting)
+# ============================================
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["crawler", "scanner", "detector", "remediation", "reports", "api", "cli"]
+skip = [".git", "__pycache__", ".venv", "venv", "build", "dist"]

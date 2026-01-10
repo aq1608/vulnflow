@@ -1,0 +1,51 @@
+# docker-compose.test.yml
+version: '3.8'
+
+services:
+  # Your VulnFlow scanner
+  vulnflow:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - vulnerable-app
+      - dvwa
+      - juice-shop
+    networks:
+      - test-network
+
+  # Custom vulnerable application
+  vulnerable-app:
+    build: ./test_app
+    ports:
+      - "5000:5000"
+    networks:
+      - test-network
+
+  # DVWA
+  dvwa:
+    image: vulnerables/web-dvwa
+    ports:
+      - "8080:80"
+    networks:
+      - test-network
+
+  # Juice Shop
+  juice-shop:
+    image: bkimminich/juice-shop
+    ports:
+      - "3000:3000"
+    networks:
+      - test-network
+
+  # WebGoat
+  webgoat:
+    image: webgoat/webgoat
+    ports:
+      - "8081:8080"
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
