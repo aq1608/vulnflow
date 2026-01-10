@@ -21,7 +21,7 @@ vulnflow scan http://example.com -d 3 -m 100 -o report.html -f html
 vulnflow server --port 8000
 ```
 
-## API
+### API
 
 ```bash
 # Start server
