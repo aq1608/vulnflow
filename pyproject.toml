@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vulnflow"
-version = "1.0.1"
+version = "1.0.2"
 description = "Web Vulnerability Scanner with Contextual Remediation"
 readme = "README.md"
 license = {text = "MIT"}

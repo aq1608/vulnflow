@@ -1,4 +1,5 @@
 LICENSE
+README.md
 pyproject.toml
 ./api/__init__.py
 ./api/main.py

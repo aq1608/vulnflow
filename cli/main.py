@@ -28,18 +28,18 @@ if RICH_AVAILABLE:
 def print_banner():
     """Print VulnFlow banner"""
     banner = """
-╔══════════════════════════════════════════════════════════╗
-║                                                          ║
-║   ██╗   ██╗██╗   ██╗██╗     ███╗   ██╗███████╗██╗       ║
-║   ██║   ██║██║   ██║██║     ████╗  ██║██╔════╝██║       ║
-║   ██║   ██║██║   ██║██║     ██╔██╗ ██║█████╗  ██║       ║
-║   ╚██╗ ██╔╝██║   ██║██║     ██║╚██╗██║██╔══╝  ██║       ║
-║    ╚████╔╝ ╚██████╔╝███████╗██║ ╚████║██║     ███████╗  ║
-║     ╚═══╝   ╚═════╝ ╚══════╝╚═╝  ╚═══╝╚═╝     ╚══════╝  ║
-║                                                          ║
-║   Web Vulnerability Scanner v1.0.0                       ║
-║                                                          ║
-╚══════════════════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║  ██╗   ██╗██╗   ██╗██╗     ███╗   ██╗███████╗██╗      ██████╗ ██╗    ██╗  ║
+║  ██║   ██║██║   ██║██║     ████╗  ██║██╔════╝██║     ██╔═══██╗██║    ██║  ║
+║  ██║   ██║██║   ██║██║     ██╔██╗ ██║█████╗  ██║     ██║   ██║██║ █╗ ██║  ║
+║  ╚██╗ ██╔╝██║   ██║██║     ██║╚██╗██║██╔══╝  ██║     ██║   ██║██║███╗██║  ║
+║   ╚████╔╝ ╚██████╔╝███████╗██║ ╚████║██║     ███████╗╚██████╔╝╚███╔███╔╝  ║
+║    ╚═══╝   ╚═════╝ ╚══════╝╚═╝  ╚═══╝╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝   ║
+║                                                                           ║
+║                   Web Vulnerability Scanner v1.0.2                        ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
     """
     if RICH_AVAILABLE:
         console.print(banner, style="bold blue")
@@ -305,7 +305,7 @@ def determine_exit_code(results: dict, fail_on: str) -> int:
 
 
 @click.group()
-@click.version_option(version="1.0.0")
+@click.version_option(version="1.0.2")
 def cli():
     """VulnFlow - Web Vulnerability Scanner with Contextual Remediation"""
     pass
@@ -427,10 +427,10 @@ def version():
     """Show version information"""
     print_banner()
     if RICH_AVAILABLE:
-        console.print("\n[bold]VulnFlow[/bold] version 1.0.0")
+        console.print("\n[bold]VulnFlow[/bold] version 1.0.2")
         console.print("[dim]Web Vulnerability Scanner with Contextual Remediation[/dim]")
     else:
-        print("\nVulnFlow version 1.0.0")
+        print("\nVulnFlow version 1.0.2")
         print("Web Vulnerability Scanner with Contextual Remediation")
 
 

@@ -16,7 +16,7 @@ from reports.generator import ReportGenerator
 app = FastAPI(
     title="VulnFlow API",
     description="Web Vulnerability Scanner with Contextual Remediation",
-    version="1.0.0"
+    version="1.0.2"
 )
 
 # Request/Response models
@@ -46,7 +46,7 @@ async def root():
     """API root endpoint"""
     return {
         "message": "VulnFlow API",
-        "version": "1.0.0",
+        "version": "1.0.2",
         "docs": "/docs"
     }
 
