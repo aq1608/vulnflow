@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: vulnflow
-Version: 1.0.2
+Version: 1.0.3
 Summary: Web Vulnerability Scanner with Contextual Remediation
 Author-email: websec <your.email@example.com>
 License: MIT
