@@ -1,8 +1,3 @@
-# Updated README.md for VulnFlow
-
-Here's a comprehensive and well-structured README file with all the features, including the new parallel scanning and timing functionality:
-
-```markdown
 # VulnFlow
 
 <div align="center">
@@ -28,25 +23,25 @@ Here's a comprehensive and well-structured README file with all the features, in
 
 ---
 
-## 🚀 Features
+## Features
 
 | Feature | Description |
 |---------|-------------|
-| ⚡ **Parallel Scanning Engine** | Concurrent vulnerability testing with configurable workers for maximum speed |
-| 🛡️ **OWASP Top 10 Coverage** | Complete coverage of OWASP Top 10 2021 vulnerabilities |
-| 🔍 **12 Security Modules** | SQLi, XSS, SSRF, IDOR, Command Injection, SSTI, and more |
-| 🕷️ **Smart Crawling** | Async web crawler with depth control and form detection |
-| 🔧 **Technology Detection** | Automatic fingerprinting of web technologies |
-| 💡 **Contextual Remediation** | Framework-specific fix recommendations |
-| 📊 **Multiple Report Formats** | JSON, HTML, and SARIF output |
-| 🔄 **CI/CD Integration** | Exit codes and SARIF for pipeline integration |
-| ⏱️ **Performance Metrics** | Detailed timing and throughput statistics |
-| 🚦 **Rate Limiting** | Configurable rate limiting to avoid detection/blocking |
-| 🔐 **Authentication Support** | Bearer tokens and proxy support |
+| **Parallel Scanning Engine** | Concurrent vulnerability testing with configurable workers for maximum speed |
+| **OWASP Top 10 Coverage** | Complete coverage of OWASP Top 10 2021 vulnerabilities |
+| **12 Security Modules** | SQLi, XSS, SSRF, IDOR, Command Injection, SSTI, and more |
+| **Smart Crawling** | Async web crawler with depth control and form detection |
+| **Technology Detection** | Automatic fingerprinting of web technologies |
+| **Contextual Remediation** | Framework-specific fix recommendations |
+| **Multiple Report Formats** | JSON, HTML, and SARIF output |
+| **CI/CD Integration** | Exit codes and SARIF for pipeline integration |
+| **Performance Metrics** | Detailed timing and throughput statistics |
+| **Rate Limiting** | Configurable rate limiting to avoid detection/blocking |
+| **Authentication Support** | Bearer tokens and proxy support |
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### From Source
 
@@ -79,7 +74,7 @@ pip install uvicorn fastapi
 
 ---
 
-## 🏁 Quick Start
+## Quick Start
 
 ### Basic Scan
 
@@ -119,7 +114,7 @@ vulnflow scan http://example.com -w 30 -c 50 --fast --rate-limit 100
 
 ---
 
-## 📋 Command Reference
+## Command Reference
 
 ### Command Overview
 
@@ -136,7 +131,7 @@ vulnflow --help
 
 ---
 
-## 🔍 SCAN Command
+## SCAN Command
 
 ```bash
 vulnflow scan [OPTIONS] TARGET_URL
@@ -195,7 +190,7 @@ vulnflow scan [OPTIONS] TARGET_URL
 
 ---
 
-## 🧩 Available Security Modules
+## Available Security Modules
 
 | Module | OWASP Category | Description |
 |--------|----------------|-------------|
@@ -215,7 +210,7 @@ vulnflow scan [OPTIONS] TARGET_URL
 
 ---
 
-## 🎯 Scan Modes
+## Scan Modes
 
 | Mode | Modules Included | Use Case |
 |------|------------------|----------|
@@ -225,7 +220,7 @@ vulnflow scan [OPTIONS] TARGET_URL
 
 ---
 
-## 📝 Usage Examples
+## Usage Examples
 
 ### Basic Scans
 
@@ -359,7 +354,7 @@ vulnflow scan https://target.com \
 
 ---
 
-## ⏱️ Performance Metrics & Timing
+##  Performance Metrics & Timing
 
 VulnFlow includes detailed performance tracking:
 
@@ -368,7 +363,7 @@ VulnFlow includes detailed performance tracking:
 ```
 ✓ Scan complete!
 
-⏱️  Total scan time: 12.45s
+  Total scan time: 12.45s
 ```
 
 ### Detailed Timing (`--timing` flag)
@@ -376,7 +371,7 @@ VulnFlow includes detailed performance tracking:
 ```
 ╭──────────────────── ⚡ Scan Performance ────────────────────╮
 │                                                              │
-│ ⏱️  Total Scan Time: 12.45s                                  │
+│   Total Scan Time: 12.45s                                    │
 │                                                              │
 │ Performance Metrics:                                         │
 │   • Pages scanned: 47 (3.8 pages/sec)                       │
@@ -385,7 +380,7 @@ VulnFlow includes detailed performance tracking:
 │                                                              │
 ╰──────────────────────────────────────────────────────────────╯
 
-            📊 Phase Breakdown
+           Phase Breakdown
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┓
 ┃ Phase                    ┃   Duration ┃ % of Total ┃ Progress           ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━┩
@@ -399,7 +394,7 @@ VulnFlow includes detailed performance tracking:
 ### Execution Statistics (`--stats` flag)
 
 ```
-            ⚡ Execution Statistics
+           Execution Statistics
 ┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
 ┃ Metric            ┃        Value ┃
 ┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
@@ -413,7 +408,7 @@ VulnFlow includes detailed performance tracking:
 
 ---
 
-## 🖥️ API Server
+## API Server
 
 ### Start Server
 
@@ -469,7 +464,7 @@ When the server is running, interactive API documentation is available at:
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -510,7 +505,7 @@ modules:
 
 ---
 
-## 🔄 CI/CD Integration
+## CI/CD Integration
 
 ### GitHub Actions
 
@@ -599,7 +594,7 @@ pipeline {
 
 ---
 
-## 📊 Exit Codes
+## Exit Codes
 
 | Code | Description |
 |------|-------------|
@@ -610,7 +605,7 @@ pipeline {
 
 ---
 
-## 💡 Quick Reference Card
+## Quick Reference Card
 
 ```bash
 # Essential Commands
