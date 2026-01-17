@@ -1,4 +1,4 @@
-# websec/scanner/xss/xss.py
+# scanner/xss/xss.py
 """Cross-Site Scripting (XSS) Scanner"""
 
 import re

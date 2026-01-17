@@ -1,4 +1,4 @@
-# websec/crawler/spider.py
+# crawler/spider.py
 import asyncio
 import aiohttp
 from bs4 import BeautifulSoup

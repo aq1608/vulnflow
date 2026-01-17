@@ -1,4 +1,4 @@
-# websec/scanner/injection/cmdi.py
+# scanner/injection/cmdi.py
 """Command Injection Scanner"""
 
 import re

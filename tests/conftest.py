@@ -1,4 +1,4 @@
-# websec/tests/conftest.py
+# tests/conftest.py
 import sys
 import os
 import pytest

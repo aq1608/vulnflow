@@ -1,4 +1,4 @@
-# websec/scanner/ssrf/ssrf.py
+# scanner/ssrf/ssrf.py
 """Server-Side Request Forgery (SSRF) Scanner"""
 
 import re

@@ -1,4 +1,4 @@
-# websec/scanner/access_control/forced_browsing.py
+# scanner/access_control/forced_browsing.py
 """Forced Browsing / Directory Enumeration Scanner"""
 
 from typing import List, Dict, Optional

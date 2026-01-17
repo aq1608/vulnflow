@@ -1,4 +1,4 @@
-# websec/detector/tech_fingerprint.py
+# detector/tech_fingerprint.py
 import re
 from typing import Dict, List
 from dataclasses import dataclass, field

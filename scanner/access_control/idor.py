@@ -1,4 +1,4 @@
-# websec/scanner/access_control/idor.py
+# scanner/access_control/idor.py
 """Insecure Direct Object Reference (IDOR) Scanner"""
 
 import re

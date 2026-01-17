@@ -1,4 +1,4 @@
-# websec/scanner/injection/nosqli.py
+# scanner/injection/nosqli.py
 """NoSQL Injection Scanner"""
 
 import re

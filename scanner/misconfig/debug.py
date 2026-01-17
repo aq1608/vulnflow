@@ -1,4 +1,4 @@
-# websec/scanner/misconfig/debug.py
+# scanner/misconfig/debug.py
 """Debug Mode Detection Scanner"""
 
 import re

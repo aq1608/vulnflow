@@ -1,4 +1,4 @@
-# websec/scanner/misconfig/__init__.py
+# scanner/misconfig/__init__.py
 from .headers import SecurityHeadersScanner
 # from .directory import DirectoryListingScanner
 from .debug import DebugModeScanner

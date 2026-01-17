@@ -1,4 +1,4 @@
-# websec/scanner/injection/sqli.py
+# scanner/injection/sqli.py
 """SQL Injection Scanner"""
 
 import re

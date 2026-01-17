@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: vulnflow
-Version: 1.0.3
+Version: 1.0.4
 Summary: Web Vulnerability Scanner with Contextual Remediation
 Author-email: websec <your.email@example.com>
 License: MIT
@@ -92,13 +92,304 @@ curl -X POST "http://localhost:8000/api/v1/scans" \
      -d '{"target_url": "http://example.com"}'
 ```
 ## Features
-- SQL Injection detection
-- Cross-Site Scripting (XSS) detection
-- Security header analysis
-- CSRF vulnerability detection
-- Technology stack fingerprinting
-- Contextual remediation advice
-- Multiple report formats (JSON, HTML, SARIF)
 
-## License
-MIT License
+- **Parallel Scanning Engine** - Concurrent vulnerability testing with configurable workers
+- **OWASP Top 10 Coverage** - Complete coverage of OWASP Top 10 2021 vulnerabilities
+- **12 Security Modules** - SQLi, XSS, SSRF, IDOR, Command Injection, and more
+- **Smart Crawling** - Async web crawler with depth control and form detection
+- **Technology Detection** - Automatic fingerprinting of web technologies
+- **Contextual Remediation** - Framework-specific fix recommendations
+- **Multiple Report Formats** - JSON, HTML, and SARIF output
+- **CI/CD Integration** - Exit codes and SARIF for pipeline integration
+- **Rate Limiting** - Configurable rate limiting to avoid detection/blocking
+- **Authentication Support** - Bearer tokens and proxy support
+
+---
+
+## Complete reference for all VulnFlow CLI options:
+
+---
+
+## 📋 **Command Overview**
+
+```bash
+vulnflow --help
+```
+
+| Command | Description |
+|---------|-------------|
+| `scan` | Scan target URL for vulnerabilities |
+| `server` | Start the API server |
+| `version` | Show version info |
+
+---
+
+## 🔍 **SCAN Command**
+
+```bash
+vulnflow scan [OPTIONS] TARGET_URL
+```
+
+### **Required Argument**
+
+| Argument | Description |
+|----------|-------------|
+| `TARGET_URL` | The target URL to scan (e.g., `http://example.com`) |
+
+---
+
+### **Scan Configuration Options**
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--mode` | | `full` | Scan mode: `full`, `quick`, or `owasp` |
+| `--modules` | | All | Specific modules to run (can be repeated) |
+| `--depth` | `-d` | `2` | Maximum crawl depth |
+| `--max-pages` | `-m` | `50` | Maximum pages to crawl |
+
+### **Performance Options**
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--workers` | `-w` | `20` | Number of concurrent workers |
+| `--timeout` | `-t` | `15` | Request timeout in seconds |
+| `--rate-limit` | `-r` | `0.1` | Delay between requests (seconds) |
+
+### **Authentication & Network Options**
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--auth-token` | | None | Bearer token for authenticated scanning |
+| `--proxy` | | None | Proxy URL (e.g., `http://127.0.0.1:8080`) |
+| `--callback-url` | | None | Callback URL for blind vulnerability detection |
+
+### **Output Options**
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--output` | `-o` | None | Output file path |
+| `--format` | `-f` | `json` | Report format: `json`, `html`, or `sarif` |
+| `--verbose` | `-v` | False | Enable verbose output |
+| `--remediation` | | False | Show remediation advice in results |
+
+### **CI/CD Integration**
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--fail-on` | | `none` | Exit with error code on severity: `critical`, `high`, `medium`, `any`, `none` |
+
+---
+
+## 🧩 **Available Modules**
+
+Use with `--modules` flag (can specify multiple):
+
+| Module | OWASP Category | Description |
+|--------|----------------|-------------|
+| `sqli` | A03:2021-Injection | SQL Injection |
+| `nosqli` | A03:2021-Injection | NoSQL Injection |
+| `cmdi` | A03:2021-Injection | Command Injection |
+| `ssti` | A03:2021-Injection | Server-Side Template Injection |
+| `xss` | A03:2021-Injection | Cross-Site Scripting |
+| `ssrf` | A10:2021-SSRF | Server-Side Request Forgery |
+| `idor` | A01:2021-Broken Access Control | Insecure Direct Object Reference |
+| `forced_browsing` | A01:2021-Broken Access Control | Forced Browsing / Path Traversal |
+| `cors` | A05:2021-Security Misconfiguration | CORS Misconfiguration |
+| `headers` | A05:2021-Security Misconfiguration | Security Headers Check |
+| `backup` | A05:2021-Security Misconfiguration | Backup Files Detection |
+| `debug` | A05:2021-Security Misconfiguration | Debug Endpoints Detection |
+
+---
+
+## 🎯 **Scan Modes**
+
+| Mode | Modules Included | Speed |
+|------|------------------|-------|
+| `quick` | sqli, xss, headers, cors | ⚡ Fastest |
+| `owasp` | All 12 modules (OWASP Top 10 focused) | 🔄 Balanced |
+| `full` | All 12 modules (thorough) | 🐢 Slowest |
+
+---
+
+## 📝 **Usage Examples**
+
+### **Basic Scans**
+
+```bash
+# Simple scan with defaults
+vulnflow scan http://example.com
+
+# Quick scan (faster, fewer checks)
+vulnflow scan http://example.com --mode quick
+
+# OWASP Top 10 focused scan
+vulnflow scan http://example.com --mode owasp
+```
+
+### **Performance Tuning**
+
+```bash
+# High concurrency scan (faster)
+vulnflow scan http://example.com -w 50 --rate-limit 0.05
+
+# Slower, more thorough scan
+vulnflow scan http://example.com -w 5 --rate-limit 0.5 -d 5 -m 200
+
+# Large site scan
+vulnflow scan http://example.com -d 4 -m 500 -w 30 -t 30
+```
+
+### **Specific Modules**
+
+```bash
+# Only SQL injection and XSS
+vulnflow scan http://example.com --modules sqli --modules xss
+
+# Only injection tests
+vulnflow scan http://example.com --modules sqli --modules nosqli --modules cmdi --modules ssti
+
+# Only misconfigurations
+vulnflow scan http://example.com --modules cors --modules headers --modules backup --modules debug
+
+# Access control tests only
+vulnflow scan http://example.com --modules idor --modules forced_browsing
+```
+
+### **Authenticated Scanning**
+
+```bash
+# With Bearer token
+vulnflow scan http://example.com --auth-token "eyJhbGciOiJIUzI1NiIs..."
+
+# Through proxy (e.g., Burp Suite)
+vulnflow scan http://example.com --proxy http://127.0.0.1:8080
+
+# With both
+vulnflow scan http://example.com --auth-token "eyJ..." --proxy http://127.0.0.1:8080
+```
+
+### **Blind Vulnerability Detection**
+
+```bash
+# With callback server for blind XSS/SSRF
+vulnflow scan http://example.com --callback-url https://your-collaborator.com/callback
+```
+
+### **Report Generation**
+
+```bash
+# JSON report (default)
+vulnflow scan http://example.com -o report.json
+
+# HTML report
+vulnflow scan http://example.com -o report.html -f html
+
+# SARIF format (for GitHub/GitLab integration)
+vulnflow scan http://example.com -o report.sarif -f sarif
+
+# Verbose with remediation
+vulnflow scan http://example.com -v --remediation -o report.html -f html
+```
+
+### **CI/CD Pipeline Integration**
+
+```bash
+# Fail pipeline if critical vulnerabilities found (exit code 2)
+vulnflow scan http://example.com --fail-on critical
+
+# Fail on high or critical (exit code 1)
+vulnflow scan http://example.com --fail-on high
+
+# Fail on any vulnerability
+vulnflow scan http://example.com --fail-on any
+
+# Full CI/CD example
+vulnflow scan http://staging.example.com \
+    --mode owasp \
+    -w 30 \
+    -o scan-results.sarif \
+    -f sarif \
+    --fail-on high
+```
+
+### **Combined Examples**
+
+```bash
+# Complete production scan
+vulnflow scan https://target.com \
+    --mode owasp \
+    --workers 25 \
+    --timeout 20 \
+    --rate-limit 0.2 \
+    --depth 3 \
+    --max-pages 100 \
+    --auth-token "Bearer eyJ..." \
+    --output full-report.html \
+    --format html \
+    --verbose \
+    --remediation \
+    --fail-on high
+
+# Quick security check
+vulnflow scan http://localhost:8080 --mode quick -v
+
+# Targeted injection testing
+vulnflow scan http://api.example.com \
+    --modules sqli \
+    --modules nosqli \
+    --modules cmdi \
+    -w 10 \
+    -o injection-report.json
+```
+
+---
+
+## 🖥️ **SERVER Command**
+
+```bash
+vulnflow server [OPTIONS]
+```
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--host` | `-h` | `0.0.0.0` | Host to bind |
+| `--port` | `-p` | `8000` | Port to bind |
+
+```bash
+# Start API server
+vulnflow server
+
+# Custom port
+vulnflow server -p 8080
+
+# Localhost only
+vulnflow server -h 127.0.0.1 -p 3000
+```
+
+---
+
+## ℹ️ **VERSION Command**
+
+```bash
+vulnflow version
+```
+
+Shows the VulnFlow banner and version information.
+
+---
+
+
+## 💡 **Quick Reference Card**
+
+```bash
+# Most common commands
+vulnflow scan <URL>                          # Basic scan
+vulnflow scan <URL> --mode quick             # Fast scan
+vulnflow scan <URL> --mode owasp             # OWASP focused
+vulnflow scan <URL> -w 50                    # High concurrency
+vulnflow scan <URL> --modules sqli           # Specific module
+vulnflow scan <URL> -o report.html -f html   # HTML report
+vulnflow scan <URL> --fail-on high           # CI/CD mode
+vulnflow scan <URL> -v --remediation         # Verbose + fixes
+vulnflow server                              # Start API
+```

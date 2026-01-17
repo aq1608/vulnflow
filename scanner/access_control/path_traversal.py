@@ -1,4 +1,4 @@
-# websec/scanner/access_control/path_traversal.py
+# scanner/access_control/path_traversal.py
 """Path Traversal / Local File Inclusion Scanner"""
 
 import re

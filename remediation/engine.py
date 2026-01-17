@@ -1,4 +1,4 @@
-# websec/remediation/engine.py
+# remediation/engine.py
 from typing import Dict, List
 from dataclasses import dataclass
 

@@ -1,4 +1,4 @@
-# websec/scanner/misconfig/backup.py
+# scanner/misconfig/backup.py
 """Backup File Scanner"""
 
 from typing import List, Dict, Optional

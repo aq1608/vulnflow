@@ -1,4 +1,4 @@
-# websec/scanner/misconfig/cors.py
+# scanner/misconfig/cors.py
 """CORS Misconfiguration Scanner"""
 
 from typing import List, Dict, Optional

@@ -1,4 +1,4 @@
-# websec/scanner/misconfig/headers.py
+# scanner/misconfig/headers.py
 """Security Headers Scanner"""
 
 from typing import List, Dict, Optional

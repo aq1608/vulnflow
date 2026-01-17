@@ -1,4 +1,4 @@
-# websec/reports/generator.py
+# reports/generator.py
 from typing import List, Dict
 from datetime import datetime
 import json

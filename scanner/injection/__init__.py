@@ -1,4 +1,4 @@
-# websec/scanner/injection/__init__.py
+# scanner/injection/__init__.py
 from .sqli import SQLInjectionScanner
 from .nosqli import NoSQLInjectionScanner
 from .cmdi import CommandInjectionScanner

@@ -1,4 +1,4 @@
-# websec/scanner/base.py
+# scanner/base.py
 """Base classes for all vulnerability scanners"""
 
 from abc import ABC, abstractmethod

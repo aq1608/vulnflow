@@ -1,4 +1,4 @@
-# websec/scanner/injection/ssti.py (continued)
+# scanner/injection/ssti.py (continued)
 """Server-Side Template Injection (SSTI) Scanner"""
 
 import re
