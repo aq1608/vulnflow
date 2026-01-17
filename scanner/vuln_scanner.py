@@ -9,24 +9,60 @@ import aiohttp
 from .base import BaseScanner, Vulnerability, Severity, OWASPCategory
 from .parallel_executor import ParallelScanExecutor, ScanWorkerPool
 
-# Import all scanner modules
+# Injection scanners
 from .injection.sqli import SQLInjectionScanner
 from .injection.nosqli import NoSQLInjectionScanner
 from .injection.cmdi import CommandInjectionScanner
 from .injection.ssti import SSTIScanner
+from .injection.ldapi import LDAPInjectionScanner
+from .injection.xpath import XPathInjectionScanner
+from .injection.hhi import HostHeaderInjectionScanner
 
+# XSS scanners
+from .xss.xss import XSSScanner
+from .xss.dom_xss import DOMXSSScanner
+
+# Access control scanners
 from .access_control.idor import IDORScanner
 from .access_control.path_traversal import PathTraversalScanner
 from .access_control.forced_browsing import ForcedBrowsingScanner
+from .access_control.privilege_escalation import PrivilegeEscalationScanner
+from .access_control.jwt_vulnerabilities import JWTVulnerabilitiesScanner
 
+# Misconfiguration scanners
 from .misconfig.headers import SecurityHeadersScanner
 from .misconfig.cors import CORSScanner
 from .misconfig.debug import DebugModeScanner
 from .misconfig.backup import BackupFileScanner
+from .misconfig.ssl_tls import SSLTLSScanner
+from .misconfig.cookie_security import CookieSecurityScanner
+from .misconfig.information_disclosure import InformationDisclosureScanner
 
+# SSRF scanner
 from .ssrf.ssrf import SSRFScanner
 
-from .xss.xss import XSSScanner
+# XXE scanner
+from .xxe.xxe import XXEScanner
+
+# Deserialization scanner
+from .deserialization.insecure_deserialization import InsecureDeserializationScanner
+
+# API security scanners
+from .api_security.rate_limiting import RateLimitingScanner
+from .api_security.mass_assignment import MassAssignmentScanner
+from .api_security.graphql import GraphQLScanner
+
+# Authentication scanners
+from .authentication.brute_force import BruteForceScanner
+from .authentication.session_fixation import SessionFixationScanner
+from .authentication.weak_password import WeakPasswordPolicyScanner
+
+# Cryptographic scanners
+from .cryptographic.weak_crypto import WeakCryptoScanner
+from .cryptographic.sensitive_data_exposure import SensitiveDataExposureScanner
+
+# CVE scanner
+from .cve.known_cve import KnownCVEScanner
 
 
 class VulnerabilityScanner:
@@ -62,34 +98,136 @@ class VulnerabilityScanner:
         
         # Initialize all available scanners
         self.all_scanners = {
-            # A01: Broken Access Control
+            # ==========================================
+            # A01:2021 - Broken Access Control
+            # ==========================================
             'idor': IDORScanner(),
             'path_traversal': PathTraversalScanner(),
             'forced_browsing': ForcedBrowsingScanner(),
+            'privilege_escalation': PrivilegeEscalationScanner(),
+            'jwt': JWTVulnerabilitiesScanner(),
             
-            # A03: Injection
+            # ==========================================
+            # A02:2021 - Cryptographic Failures
+            # ==========================================
+            'ssl_tls': SSLTLSScanner(),
+            'weak_crypto': WeakCryptoScanner(),
+            'sensitive_data': SensitiveDataExposureScanner(),
+            
+            # ==========================================
+            # A03:2021 - Injection
+            # ==========================================
             'sqli': SQLInjectionScanner(),
             'nosqli': NoSQLInjectionScanner(),
             'cmdi': CommandInjectionScanner(),
             'ssti': SSTIScanner(),
             'xss': XSSScanner(),
+            'dom_xss': DOMXSSScanner(),
+            'ldapi': LDAPInjectionScanner(),
+            'xpath': XPathInjectionScanner(),
+            'hhi': HostHeaderInjectionScanner(),
             
-            # A05: Security Misconfiguration
+            # ==========================================
+            # A04:2021 - Insecure Design
+            # ==========================================
+            'rate_limiting': RateLimitingScanner(),
+            'brute_force': BruteForceScanner(),
+            
+            # ==========================================
+            # A05:2021 - Security Misconfiguration
+            # ==========================================
             'headers': SecurityHeadersScanner(),
             'cors': CORSScanner(),
             'debug': DebugModeScanner(),
             'backup': BackupFileScanner(),
+            'cookie_security': CookieSecurityScanner(),
+            'info_disclosure': InformationDisclosureScanner(),
             
-            # A10: SSRF
+            # ==========================================
+            # A06:2021 - Vulnerable Components
+            # ==========================================
+            'known_cve': KnownCVEScanner(),
+            
+            # ==========================================
+            # A07:2021 - Auth Failures
+            # ==========================================
+            'session_fixation': SessionFixationScanner(),
+            'weak_password': WeakPasswordPolicyScanner(),
+            
+            # ==========================================
+            # A08:2021 - Software/Data Integrity
+            # ==========================================
+            'deserialization': InsecureDeserializationScanner(),
+            
+            # ==========================================
+            # A09:2021 - Logging/Monitoring
+            # ==========================================
+            # (Typically requires access to server logs)
+            
+            # ==========================================
+            # A10:2021 - SSRF
+            # ==========================================
             'ssrf': SSRFScanner(),
+            
+            # ==========================================
+            # Additional Scanners
+            # ==========================================
+            'xxe': XXEScanner(),
+            'graphql': GraphQLScanner(),
+            'mass_assignment': MassAssignmentScanner(),
         }
         
         # Categorize scanners
-        self.site_scanner_names = ['headers', 'cors', 'debug', 'backup', 'forced_browsing']
-        self.param_scanner_names = [
-            'sqli', 'nosqli', 'xss', 'cmdi', 'ssti',
-            'idor', 'path_traversal', 'ssrf'
+        self.site_scanner_names = [
+            'headers', 'cors', 'debug', 'backup', 'forced_browsing',
+            'ssl_tls', 'cookie_security', 'info_disclosure', 'rate_limiting',
+            'graphql', 'known_cve'
         ]
+        
+        self.param_scanner_names = [
+            'sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi', 'ssti',
+            'ldapi', 'xpath', 'hhi',
+            'idor', 'path_traversal', 'ssrf', 'xxe',
+            'deserialization', 'mass_assignment',
+            'jwt', 'session_fixation',
+            'weak_crypto', 'sensitive_data'
+        ]
+        
+        # Scan mode presets
+        self.scan_modes = {
+            'quick': [
+                'sqli', 'xss', 'headers', 'cors', 'ssl_tls'
+            ],
+            'standard': [
+                'sqli', 'nosqli', 'xss', 'cmdi', 'ssti',
+                'headers', 'cors', 'debug', 'backup',
+                'idor', 'path_traversal', 'ssrf', 'ssl_tls'
+            ],
+            'owasp': [
+                # All OWASP Top 10 related scanners
+                'sqli', 'nosqli', 'xss', 'cmdi', 'ssti', 'xxe',
+                'idor', 'path_traversal', 'forced_browsing', 'jwt',
+                'ssl_tls', 'weak_crypto', 'sensitive_data',
+                'headers', 'cors', 'debug', 'backup', 'cookie_security',
+                'rate_limiting', 'session_fixation', 'deserialization',
+                'ssrf', 'known_cve'
+            ],
+            'full': list(self.all_scanners.keys()),
+            'api': [
+                'sqli', 'nosqli', 'cmdi', 'ssrf', 'xxe',
+                'idor', 'jwt', 'rate_limiting', 'cors',
+                'mass_assignment', 'graphql', 'headers',
+                'deserialization', 'info_disclosure'
+            ],
+            'injection': [
+                'sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi',
+                'ssti', 'ldapi', 'xpath', 'hhi', 'xxe'
+            ],
+            'auth': [
+                'jwt', 'session_fixation', 'brute_force',
+                'weak_password', 'idor', 'privilege_escalation'
+            ],
+        }
         
         # Select scanners based on config
         self.active_scanners = self._select_scanners()

@@ -46,26 +46,26 @@
         <div class="header">
             <h1>🛡️ VulnFlow Security Report</h1>
             <p><strong>Target:</strong> http://testphp.vulnweb.com</p>
-            <p><strong>Scan Date:</strong> 2026-01-18 00:01:47</p>
+            <p><strong>Scan Date:</strong> 2026-01-18 04:16:41</p>
             <p><strong>Pages Crawled:</strong> 42 | 
                <strong>Forms Tested:</strong> 12</p>
         </div>
         
         <div class="summary">
             <div class="summary-card critical">
-                <div class="count">21</div>
+                <div class="count">46</div>
                 <div>Critical</div>
             </div>
             <div class="summary-card high">
-                <div class="count">18</div>
+                <div class="count">28</div>
                 <div>High</div>
             </div>
             <div class="summary-card medium">
-                <div class="count">3</div>
+                <div class="count">12</div>
                 <div>Medium</div>
             </div>
             <div class="summary-card low">
-                <div class="count">6</div>
+                <div class="count">17</div>
                 <div>Low</div>
             </div>
         </div>
@@ -74,7 +74,75 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#1 Server-Side Template Injection (SSTI)</h3>
+                <h3>#1 Known Vulnerability: CVE-2019-11043</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> PHP
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">N/A</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">X-Powered-By: PHP/5.6.40-38+ubuntu20.04.1+deb.sury.org+1</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> PHP 5.x - Multiple known vulnerabilities (EOL) (Version: PHP/5.6.40-38+ubuntu20.04.1+deb.sury.org+1)
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/1035.html" 
+                   target="_blank">CWE-1035</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#2 SQL Injection (Error-based)</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/search.php?test=query
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> goButton
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&#x27;--</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Database: MYSQL, Error: Warning: mysql_</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Error-based SQL injection detected. The application returns database error messages when malicious input is provided. Technique: Quote with comment
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/89.html" 
+                   target="_blank">CWE-89</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#3 Server-Side Template Injection (SSTI)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -108,7 +176,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#2 Server-Side Template Injection (SSTI)</h3>
+                <h3>#4 Server-Side Template Injection (SSTI)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -142,7 +210,143 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#3 SQL Injection (Error-based)</h3>
+                <h3>#5 LDAP Injection - Authentication Bypass</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/search.php?test=query
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> searchFor
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">admin)(&amp;)</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Authentication bypass via POST</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> LDAP injection in POST allows authentication bypass
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/90.html" 
+                   target="_blank">CWE-90</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#6 XPath Injection - Authentication Bypass</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/search.php?test=query
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> goButton
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&#x27; or &#x27;1&#x27;=&#x27;1</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">POST bypass successful</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> XPath injection via POST
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/643.html" 
+                   target="_blank">CWE-643</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#7 JWT Missing Signature Verification</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/search.php?test=query
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> JWT Token
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">Fake JWT with arbitrary signature</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server accepted JWT without proper signature verification</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> JWT signature is not being verified, allowing token forgery
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/347.html" 
+                   target="_blank">CWE-347</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#8 SQL Injection (Error-based)</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/guestbook.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> text
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&quot;</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Database: MYSQL, Error: Warning: mysql_</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Error-based SQL injection detected. The application returns database error messages when malicious input is provided. Technique: Double quote
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/89.html" 
+                   target="_blank">CWE-89</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#9 SQL Injection (Error-based)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -176,7 +380,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#4 Server-Side Template Injection (SSTI)</h3>
+                <h3>#10 Server-Side Template Injection (SSTI)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -210,7 +414,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#5 Server-Side Template Injection (SSTI)</h3>
+                <h3>#11 Server-Side Template Injection (SSTI)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -244,7 +448,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#6 Server-Side Template Injection (SSTI)</h3>
+                <h3>#12 Server-Side Template Injection (SSTI)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -278,7 +482,143 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#7 Server-Side Template Injection (SSTI)</h3>
+                <h3>#13 LDAP Injection - Authentication Bypass</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/guestbook.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> name
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">admin)(&amp;)</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Authentication bypass via POST</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> LDAP injection in POST allows authentication bypass
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/90.html" 
+                   target="_blank">CWE-90</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#14 JWT Missing Signature Verification</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/guestbook.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> JWT Token
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">Fake JWT with arbitrary signature</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server accepted JWT without proper signature verification</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> JWT signature is not being verified, allowing token forgery
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/347.html" 
+                   target="_blank">CWE-347</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#15 SQL Injection (Error-based)</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/userinfo.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> uname
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&#x27;; DROP TABLE test--</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Database: MYSQL, Error: Warning: mysql_</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Error-based SQL injection detected. The application returns database error messages when malicious input is provided. Technique: Stacked DROP (safe test)
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/89.html" 
+                   target="_blank">CWE-89</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#16 SQL Injection (Error-based)</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/userinfo.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> pass
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&#x27;</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Database: MYSQL, Error: Warning: mysql_</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Error-based SQL injection detected. The application returns database error messages when malicious input is provided. Technique: Single quote
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/89.html" 
+                   target="_blank">CWE-89</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#17 Server-Side Template Injection (SSTI)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -312,7 +652,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#8 Server-Side Template Injection (SSTI)</h3>
+                <h3>#18 Server-Side Template Injection (SSTI)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -346,41 +686,41 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#9 SQL Injection (Error-based)</h3>
+                <h3>#19 JWT Missing Signature Verification</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
-                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/cart.php
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/userinfo.php
             </div>
 
             <div class="detail">
-                <span class="detail-label">Parameter:</span> addcart
+                <span class="detail-label">Parameter:</span> JWT Token
             </div>
 
             <div class="detail">
                 <span class="detail-label">Payload:</span>
-                <div class="code">&#x27;--</div>
+                <div class="code">Fake JWT with arbitrary signature</div>
             </div>
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Database: MYSQL, Error: Warning: mysql_</div>
+                <div class="code">Server accepted JWT without proper signature verification</div>
             </div>
             <div class="detail">
-                <span class="detail-label">Description:</span> Error-based SQL injection detected. The application returns database error messages when malicious input is provided. Technique: Quote with comment
+                <span class="detail-label">Description:</span> JWT signature is not being verified, allowing token forgery
             </div>
 
             <div class="detail">
                 <span class="detail-label">CWE:</span> 
-                <a href="https://cwe.mitre.org/data/definitions/89.html" 
-                   target="_blank">CWE-89</a>
+                <a href="https://cwe.mitre.org/data/definitions/347.html" 
+                   target="_blank">CWE-347</a>
             </div>
 
         </div>
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#10 Server-Side Template Injection (SSTI)</h3>
+                <h3>#20 SQL Injection (Error-based)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -393,28 +733,62 @@
 
             <div class="detail">
                 <span class="detail-label">Payload:</span>
-                <div class="code">{{&#x27;&#x27;.__class__}}</div>
+                <div class="code">1&#x27; ORDER BY 10--</div>
             </div>
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Template expression evaluated. Expected &#x27;str&#x27; found in response. Engine: Jinja2</div>
+                <div class="code">Database: MYSQL, Error: Warning: mysql_</div>
             </div>
             <div class="detail">
-                <span class="detail-label">Description:</span> The application is vulnerable to SSTI using Jinja2. This can lead to remote code execution.
+                <span class="detail-label">Description:</span> Error-based SQL injection detected. The application returns database error messages when malicious input is provided. Technique: ORDER BY 10
             </div>
 
             <div class="detail">
                 <span class="detail-label">CWE:</span> 
-                <a href="https://cwe.mitre.org/data/definitions/1336.html" 
-                   target="_blank">CWE-1336</a>
+                <a href="https://cwe.mitre.org/data/definitions/89.html" 
+                   target="_blank">CWE-89</a>
             </div>
 
         </div>
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#11 Server-Side Template Injection (SSTI)</h3>
+                <h3>#21 SQL Injection (Error-based)</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/cart.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> addcart
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&#x27;</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Database: MYSQL, Error: Warning: mysql_</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Error-based SQL injection detected. The application returns database error messages when malicious input is provided. Technique: Single quote
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/89.html" 
+                   target="_blank">CWE-89</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#22 Server-Side Template Injection (SSTI)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -448,75 +822,211 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#12 SQL Injection (Error-based)</h3>
+                <h3>#23 XPath Injection - Authentication Bypass</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
-                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/cart.php
             </div>
 
             <div class="detail">
-                <span class="detail-label">Parameter:</span> cat
+                <span class="detail-label">Parameter:</span> price
             </div>
 
             <div class="detail">
                 <span class="detail-label">Payload:</span>
-                <div class="code">&#x27;</div>
+                <div class="code">&#x27; or 1=1 or &#x27;&#x27;=&#x27;</div>
             </div>
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Database: MYSQL, Error: SQL syntax; check the manual that corresponds to your MySQL</div>
+                <div class="code">Response indicates successful bypass</div>
             </div>
             <div class="detail">
-                <span class="detail-label">Description:</span> Error-based SQL injection detected. The application returns database error messages when malicious input is provided. Technique: Single quote
+                <span class="detail-label">Description:</span> XPath injection allows authentication bypass
             </div>
 
             <div class="detail">
                 <span class="detail-label">CWE:</span> 
-                <a href="https://cwe.mitre.org/data/definitions/89.html" 
-                   target="_blank">CWE-89</a>
+                <a href="https://cwe.mitre.org/data/definitions/643.html" 
+                   target="_blank">CWE-643</a>
             </div>
 
         </div>
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#13 Server-Side Template Injection (SSTI)</h3>
+                <h3>#24 JWT Missing Signature Verification</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
-                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/cart.php
             </div>
 
             <div class="detail">
-                <span class="detail-label">Parameter:</span> cat
+                <span class="detail-label">Parameter:</span> JWT Token
             </div>
 
             <div class="detail">
                 <span class="detail-label">Payload:</span>
-                <div class="code">{{&#x27;&#x27;.__class__}}</div>
+                <div class="code">Fake JWT with arbitrary signature</div>
             </div>
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Template expression evaluated. Expected &#x27;str&#x27; found in response. Engine: Jinja2</div>
+                <div class="code">Server accepted JWT without proper signature verification</div>
             </div>
             <div class="detail">
-                <span class="detail-label">Description:</span> The application is vulnerable to SSTI using Jinja2. This can lead to remote code execution.
+                <span class="detail-label">Description:</span> JWT signature is not being verified, allowing token forgery
             </div>
 
             <div class="detail">
                 <span class="detail-label">CWE:</span> 
-                <a href="https://cwe.mitre.org/data/definitions/1336.html" 
-                   target="_blank">CWE-1336</a>
+                <a href="https://cwe.mitre.org/data/definitions/347.html" 
+                   target="_blank">CWE-347</a>
             </div>
 
         </div>
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#14 SQL Injection (Error-based)</h3>
+                <h3>#25 LDAP Injection - Authentication Bypass</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/secured/newuser.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> uuname
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">*</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Authentication bypass via POST</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> LDAP injection in POST allows authentication bypass
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/90.html" 
+                   target="_blank">CWE-90</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#26 XPath Injection - Authentication Bypass</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/secured/newuser.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> uuname
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&#x27;] | //user/*[contains(*,&#x27;</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">POST bypass successful</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> XPath injection via POST
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/643.html" 
+                   target="_blank">CWE-643</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#27 JWT Missing Signature Verification</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/secured/newuser.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> JWT Token
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">Fake JWT with arbitrary signature</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server accepted JWT without proper signature verification</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> JWT signature is not being verified, allowing token forgery
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/347.html" 
+                   target="_blank">CWE-347</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#28 JWT Missing Signature Verification</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/hpp/params.php?p=valid&amp;pp=12
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> JWT Token
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">Fake JWT with arbitrary signature</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server accepted JWT without proper signature verification</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> JWT signature is not being verified, allowing token forgery
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/347.html" 
+                   target="_blank">CWE-347</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#29 SQL Injection (Error-based)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -550,7 +1060,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#15 Server-Side Template Injection (SSTI)</h3>
+                <h3>#30 Server-Side Template Injection (SSTI)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -584,7 +1094,211 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#16 SQL Injection (Error-based)</h3>
+                <h3>#31 JWT Missing Signature Verification</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/artists.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> JWT Token
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">Fake JWT with arbitrary signature</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server accepted JWT without proper signature verification</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> JWT signature is not being verified, allowing token forgery
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/347.html" 
+                   target="_blank">CWE-347</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#32 SQL Injection (Error-based)</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> cat
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&#x27;</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Database: MYSQL, Error: SQL syntax; check the manual that corresponds to your MySQL</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Error-based SQL injection detected. The application returns database error messages when malicious input is provided. Technique: Single quote
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/89.html" 
+                   target="_blank">CWE-89</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#33 Server-Side Template Injection (SSTI)</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> cat
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">{{&#x27;&#x27;.__class__}}</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Template expression evaluated. Expected &#x27;str&#x27; found in response. Engine: Jinja2</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> The application is vulnerable to SSTI using Jinja2. This can lead to remote code execution.
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/1336.html" 
+                   target="_blank">CWE-1336</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#34 JWT Missing Signature Verification</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> JWT Token
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">Fake JWT with arbitrary signature</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server accepted JWT without proper signature verification</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> JWT signature is not being verified, allowing token forgery
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/347.html" 
+                   target="_blank">CWE-347</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#35 SQL Injection (Error-based)</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> artist
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&#x27;</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Database: MYSQL, Error: SQL syntax; check the manual that corresponds to your MySQL</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Error-based SQL injection detected. The application returns database error messages when malicious input is provided. Technique: Single quote
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/89.html" 
+                   target="_blank">CWE-89</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#36 Server-Side Template Injection (SSTI)</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> artist
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">{{&#x27;&#x27;.__class__}}</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Template expression evaluated. Expected &#x27;str&#x27; found in response. Engine: Jinja2</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> The application is vulnerable to SSTI using Jinja2. This can lead to remote code execution.
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/1336.html" 
+                   target="_blank">CWE-1336</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#37 SQL Injection (Error-based)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -618,7 +1332,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#17 Server-Side Template Injection (SSTI)</h3>
+                <h3>#38 Server-Side Template Injection (SSTI)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -652,7 +1366,109 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#18 Path Traversal / Local File Inclusion</h3>
+                <h3>#39 JWT Missing Signature Verification</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/product.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> JWT Token
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">Fake JWT with arbitrary signature</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server accepted JWT without proper signature verification</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> JWT signature is not being verified, allowing token forgery
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/347.html" 
+                   target="_blank">CWE-347</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#40 LDAP Injection - Authentication Bypass</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/showimage.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> file
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">*</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Authentication bypass successful</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> LDAP injection allows authentication bypass
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/90.html" 
+                   target="_blank">CWE-90</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#41 XPath Injection - Authentication Bypass</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/showimage.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> file
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&#x27; or &#x27;1&#x27;=&#x27;1</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response indicates successful bypass</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> XPath injection allows authentication bypass
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/643.html" 
+                   target="_blank">CWE-643</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#42 Path Traversal / Local File Inclusion</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -686,75 +1502,41 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#19 SQL Injection (Error-based)</h3>
+                <h3>#43 JWT Missing Signature Verification</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
-                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/showimage.php
             </div>
 
             <div class="detail">
-                <span class="detail-label">Parameter:</span> artist
+                <span class="detail-label">Parameter:</span> JWT Token
             </div>
 
             <div class="detail">
                 <span class="detail-label">Payload:</span>
-                <div class="code">&#x27;</div>
+                <div class="code">Fake JWT with arbitrary signature</div>
             </div>
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Database: MYSQL, Error: SQL syntax; check the manual that corresponds to your MySQL</div>
+                <div class="code">Server accepted JWT without proper signature verification</div>
             </div>
             <div class="detail">
-                <span class="detail-label">Description:</span> Error-based SQL injection detected. The application returns database error messages when malicious input is provided. Technique: Single quote
+                <span class="detail-label">Description:</span> JWT signature is not being verified, allowing token forgery
             </div>
 
             <div class="detail">
                 <span class="detail-label">CWE:</span> 
-                <a href="https://cwe.mitre.org/data/definitions/89.html" 
-                   target="_blank">CWE-89</a>
+                <a href="https://cwe.mitre.org/data/definitions/347.html" 
+                   target="_blank">CWE-347</a>
             </div>
 
         </div>
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#20 Server-Side Template Injection (SSTI)</h3>
-                <span class="severity critical">critical</span>
-            </div>
-            <div class="detail">
-                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Parameter:</span> artist
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Payload:</span>
-                <div class="code">{{&#x27;&#x27;.__class__}}</div>
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Evidence:</span>
-                <div class="code">Template expression evaluated. Expected &#x27;str&#x27; found in response. Engine: Jinja2</div>
-            </div>
-            <div class="detail">
-                <span class="detail-label">Description:</span> The application is vulnerable to SSTI using Jinja2. This can lead to remote code execution.
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">CWE:</span> 
-                <a href="https://cwe.mitre.org/data/definitions/1336.html" 
-                   target="_blank">CWE-1336</a>
-            </div>
-
-        </div>
-
-        <div class="vuln-card">
-            <div class="vuln-header">
-                <h3>#21 NoSQL Injection (Error-based)</h3>
+                <h3>#44 NoSQL Injection (Error-based)</h3>
                 <span class="severity critical">critical</span>
             </div>
             <div class="detail">
@@ -788,7 +1570,75 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#22 Sensitive Path Exposed: Admin Panel</h3>
+                <h3>#45 LDAP Injection - Authentication Bypass</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/hpp/
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> pp
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">admin)(&amp;)</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Authentication bypass successful</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> LDAP injection allows authentication bypass
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/90.html" 
+                   target="_blank">CWE-90</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#46 JWT Missing Signature Verification</h3>
+                <span class="severity critical">critical</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/hpp/
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> JWT Token
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">Fake JWT with arbitrary signature</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server accepted JWT without proper signature verification</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> JWT signature is not being verified, allowing token forgery
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/347.html" 
+                   target="_blank">CWE-347</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#47 Sensitive Path Exposed: Admin Panel</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -813,25 +1663,59 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#23 Potential NoSQL Injection</h3>
+                <h3>#48 XPath Injection - Boolean Based</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
-                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/secured/newuser.php
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/search.php?test=query
             </div>
 
             <div class="detail">
-                <span class="detail-label">Parameter:</span> upass
+                <span class="detail-label">Parameter:</span> goButton
             </div>
 
             <div class="detail">
                 <span class="detail-label">Payload:</span>
-                <div class="code">{&quot;$where&quot;: &quot;1==1&quot;}</div>
+                <div class="code">True: &#x27; and &#x27;1&#x27;=&#x27;1, False: &#x27; and &#x27;1&#x27;=&#x27;2</div>
             </div>
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Response length changed significantly (415 -&gt; 170) with NoSQL operator</div>
+                <div class="code">Response difference: 74 bytes</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Boolean-based XPath injection confirmed
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/643.html" 
+                   target="_blank">CWE-643</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#49 Potential NoSQL Injection</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/userinfo.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> pass
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">{&quot;$gt&quot;: &quot;&quot;}</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response length changed significantly (5523 -&gt; 5988) with NoSQL operator</div>
             </div>
             <div class="detail">
                 <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
@@ -847,7 +1731,143 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#24 Potential NoSQL Injection</h3>
+                <h3>#50 XPath Injection - Boolean Based</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/userinfo.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> uname
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">True: &#x27; and &#x27;1&#x27;=&#x27;1, False: &#x27; and &#x27;1&#x27;=&#x27;2</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response difference: 5818 bytes</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Boolean-based XPath injection confirmed
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/643.html" 
+                   target="_blank">CWE-643</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#51 Potential NoSQL Injection</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/cart.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> addcart
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">{&quot;$gt&quot;: &quot;&quot;}</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response length changed significantly (5200 -&gt; 170) with NoSQL operator</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/943.html" 
+                   target="_blank">CWE-943</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#52 Potential NoSQL Injection</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/secured/newuser.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> uuname
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">{&quot;$ne&quot;: &quot;&quot;}</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response length changed significantly (170 -&gt; 415) with NoSQL operator</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/943.html" 
+                   target="_blank">CWE-943</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#53 Potential NoSQL Injection</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/secured/newuser.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> upass
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">{&quot;$gt&quot;: &quot;&quot;}</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response length changed significantly (170 -&gt; 415) with NoSQL operator</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/943.html" 
+                   target="_blank">CWE-943</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#54 Potential NoSQL Injection</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -865,7 +1885,7 @@
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Response length changed significantly (415 -&gt; 170) with NoSQL operator</div>
+                <div class="code">Response length changed significantly (170 -&gt; 415) with NoSQL operator</div>
             </div>
             <div class="detail">
                 <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
@@ -881,7 +1901,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#25 Potential NoSQL Injection</h3>
+                <h3>#55 Potential NoSQL Injection</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -899,7 +1919,7 @@
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Response length changed significantly (415 -&gt; 170) with NoSQL operator</div>
+                <div class="code">Response length changed significantly (170 -&gt; 415) with NoSQL operator</div>
             </div>
             <div class="detail">
                 <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
@@ -915,7 +1935,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#26 Potential NoSQL Injection</h3>
+                <h3>#56 Potential NoSQL Injection</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -933,7 +1953,7 @@
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Response length changed significantly (415 -&gt; 170) with NoSQL operator</div>
+                <div class="code">Response length changed significantly (170 -&gt; 415) with NoSQL operator</div>
             </div>
             <div class="detail">
                 <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
@@ -949,7 +1969,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#27 Potential NoSQL Injection</h3>
+                <h3>#57 Potential NoSQL Injection</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -967,7 +1987,7 @@
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Response length changed significantly (415 -&gt; 170) with NoSQL operator</div>
+                <div class="code">Response length changed significantly (170 -&gt; 415) with NoSQL operator</div>
             </div>
             <div class="detail">
                 <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
@@ -983,7 +2003,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#28 Potential NoSQL Injection</h3>
+                <h3>#58 Potential NoSQL Injection</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -1001,7 +2021,7 @@
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Response length changed significantly (415 -&gt; 170) with NoSQL operator</div>
+                <div class="code">Response length changed significantly (170 -&gt; 415) with NoSQL operator</div>
             </div>
             <div class="detail">
                 <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
@@ -1017,7 +2037,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#29 Potential NoSQL Injection</h3>
+                <h3>#59 Potential NoSQL Injection</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -1035,7 +2055,7 @@
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Response length changed significantly (415 -&gt; 170) with NoSQL operator</div>
+                <div class="code">Response length changed significantly (170 -&gt; 415) with NoSQL operator</div>
             </div>
             <div class="detail">
                 <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
@@ -1051,15 +2071,15 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#30 Potential NoSQL Injection</h3>
+                <h3>#60 Potential NoSQL Injection</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
-                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/secured/newuser.php
             </div>
 
             <div class="detail">
-                <span class="detail-label">Parameter:</span> cat
+                <span class="detail-label">Parameter:</span> signup
             </div>
 
             <div class="detail">
@@ -1069,7 +2089,7 @@
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Response length changed significantly (7880 -&gt; 2149) with NoSQL operator</div>
+                <div class="code">Response length changed significantly (170 -&gt; 415) with NoSQL operator</div>
             </div>
             <div class="detail">
                 <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
@@ -1085,41 +2105,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#31 Cross-Site Scripting (Reflected)</h3>
-                <span class="severity high">high</span>
-            </div>
-            <div class="detail">
-                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Parameter:</span> cat
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Payload:</span>
-                <div class="code">&lt;script&gt;alert(&quot;VuLnFlOw&quot;)&lt;/script&gt;</div>
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Evidence:</span>
-                <div class="code">Context: html_body, Payload reflected: &lt;script&gt;alert(&quot;VuLnFlOw&quot;)&lt;/script&gt;</div>
-            </div>
-            <div class="detail">
-                <span class="detail-label">Description:</span> Reflected XSS vulnerability detected. The application reflects user input in html_body context without proper encoding.
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">CWE:</span> 
-                <a href="https://cwe.mitre.org/data/definitions/79.html" 
-                   target="_blank">CWE-79</a>
-            </div>
-
-        </div>
-
-        <div class="vuln-card">
-            <div class="vuln-header">
-                <h3>#32 Potential NoSQL Injection</h3>
+                <h3>#61 Potential NoSQL Injection</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -1137,7 +2123,7 @@
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Response length changed significantly (6251 -&gt; 2183) with NoSQL operator</div>
+                <div class="code">Response length changed significantly (6325 -&gt; 2219) with NoSQL operator</div>
             </div>
             <div class="detail">
                 <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
@@ -1153,7 +2139,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#33 Cross-Site Scripting (Reflected)</h3>
+                <h3>#62 Cross-Site Scripting (Reflected)</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -1187,7 +2173,245 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#34 Potential NoSQL Injection</h3>
+                <h3>#63 XPath Injection - Boolean Based</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/artists.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> artist
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">True: 1 and 1=1, False: 1 and 1=2</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response difference: 1516 bytes</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Boolean-based XPath injection confirmed
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/643.html" 
+                   target="_blank">CWE-643</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#64 Potential NoSQL Injection</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> cat
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">{&quot;$gt&quot;: &quot;&quot;}</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response length changed significantly (7954 -&gt; 2185) with NoSQL operator</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/943.html" 
+                   target="_blank">CWE-943</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#65 Cross-Site Scripting (Reflected)</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> cat
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&lt;script&gt;alert(&quot;VuLnFlOw&quot;)&lt;/script&gt;</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Context: html_body, Payload reflected: &lt;script&gt;alert(&quot;VuLnFlOw&quot;)&lt;/script&gt;</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Reflected XSS vulnerability detected. The application reflects user input in html_body context without proper encoding.
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/79.html" 
+                   target="_blank">CWE-79</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#66 XPath Injection - Boolean Based</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> cat
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">True: 1 and 1=1, False: 1 and 1=2</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response difference: 3181 bytes</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Boolean-based XPath injection confirmed
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/643.html" 
+                   target="_blank">CWE-643</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#67 Potential NoSQL Injection</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> artist
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">{&quot;$gt&quot;: &quot;&quot;}</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response length changed significantly (8068 -&gt; 2185) with NoSQL operator</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/943.html" 
+                   target="_blank">CWE-943</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#68 Cross-Site Scripting (Reflected)</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> artist
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">&lt;script&gt;alert(&quot;VuLnFlOw&quot;)&lt;/script&gt;</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Context: html_body, Payload reflected: &lt;script&gt;alert(&quot;VuLnFlOw&quot;)&lt;/script&gt;</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Reflected XSS vulnerability detected. The application reflects user input in html_body context without proper encoding.
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/79.html" 
+                   target="_blank">CWE-79</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#69 XPath Injection - Boolean Based</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> artist
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">True: 1 and 1=1, False: 1 and 1=2</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response difference: 3295 bytes</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Boolean-based XPath injection confirmed
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/643.html" 
+                   target="_blank">CWE-643</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#70 Potential NoSQL Injection</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -1205,7 +2429,7 @@
 
             <div class="detail">
                 <span class="detail-label">Evidence:</span>
-                <div class="code">Response length changed significantly (6428 -&gt; 2506) with NoSQL operator</div>
+                <div class="code">Response length changed significantly (6502 -&gt; 2542) with NoSQL operator</div>
             </div>
             <div class="detail">
                 <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
@@ -1221,7 +2445,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#35 Cross-Site Scripting (Reflected)</h3>
+                <h3>#71 Cross-Site Scripting (Reflected)</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -1255,7 +2479,41 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#36 Cross-Site Scripting (Reflected)</h3>
+                <h3>#72 XPath Injection - Boolean Based</h3>
+                <span class="severity high">high</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/product.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> pic
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">True: 1 and 1=1, False: 1 and 1=2</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Response difference: 1372 bytes</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Boolean-based XPath injection confirmed
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/643.html" 
+                   target="_blank">CWE-643</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#73 Cross-Site Scripting (Reflected)</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -1289,75 +2547,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#37 Potential NoSQL Injection</h3>
-                <span class="severity high">high</span>
-            </div>
-            <div class="detail">
-                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Parameter:</span> artist
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Payload:</span>
-                <div class="code">{&quot;$gt&quot;: &quot;&quot;}</div>
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Evidence:</span>
-                <div class="code">Response length changed significantly (7994 -&gt; 2149) with NoSQL operator</div>
-            </div>
-            <div class="detail">
-                <span class="detail-label">Description:</span> The application response changed significantly when NoSQL operators were injected, suggesting potential NoSQL injection.
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">CWE:</span> 
-                <a href="https://cwe.mitre.org/data/definitions/943.html" 
-                   target="_blank">CWE-943</a>
-            </div>
-
-        </div>
-
-        <div class="vuln-card">
-            <div class="vuln-header">
-                <h3>#38 Cross-Site Scripting (Reflected)</h3>
-                <span class="severity high">high</span>
-            </div>
-            <div class="detail">
-                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Parameter:</span> artist
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Payload:</span>
-                <div class="code">&lt;script&gt;alert(&quot;VuLnFlOw&quot;)&lt;/script&gt;</div>
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">Evidence:</span>
-                <div class="code">Context: html_body, Payload reflected: &lt;script&gt;alert(&quot;VuLnFlOw&quot;)&lt;/script&gt;</div>
-            </div>
-            <div class="detail">
-                <span class="detail-label">Description:</span> Reflected XSS vulnerability detected. The application reflects user input in html_body context without proper encoding.
-            </div>
-
-            <div class="detail">
-                <span class="detail-label">CWE:</span> 
-                <a href="https://cwe.mitre.org/data/definitions/79.html" 
-                   target="_blank">CWE-79</a>
-            </div>
-
-        </div>
-
-        <div class="vuln-card">
-            <div class="vuln-header">
-                <h3>#39 Cross-Site Scripting (Reflected)</h3>
+                <h3>#74 Cross-Site Scripting (Reflected)</h3>
                 <span class="severity high">high</span>
             </div>
             <div class="detail">
@@ -1391,7 +2581,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#40 Missing Security Header: Strict-Transport-Security</h3>
+                <h3>#75 Missing Security Header: Strict-Transport-Security</h3>
                 <span class="severity medium">medium</span>
             </div>
             <div class="detail">
@@ -1416,7 +2606,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#41 Missing Security Header: Content-Security-Policy</h3>
+                <h3>#76 Missing Security Header: Content-Security-Policy</h3>
                 <span class="severity medium">medium</span>
             </div>
             <div class="detail">
@@ -1441,7 +2631,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#42 Missing Security Header: X-Frame-Options</h3>
+                <h3>#77 Missing Security Header: X-Frame-Options</h3>
                 <span class="severity medium">medium</span>
             </div>
             <div class="detail">
@@ -1466,7 +2656,313 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#43 Missing Security Header: X-Content-Type-Options</h3>
+                <h3>#78 Directory Listing Enabled</h3>
+                <span class="severity medium">medium</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/images/
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> Directory
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">/images/</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Directory listing is enabled</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Directory listing enabled for /images/
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/548.html" 
+                   target="_blank">CWE-548</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#79 Session Fixation - Arbitrary Session Accepted</h3>
+                <span class="severity medium">medium</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/search.php?test=query
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> PHPSESSID
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">FAKEATTACKERSESSIONAAAAAAAAAAA...</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server did not reject arbitrary session ID</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Application may accept arbitrary session identifiers
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/384.html" 
+                   target="_blank">CWE-384</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#80 Session Fixation - Arbitrary Session Accepted</h3>
+                <span class="severity medium">medium</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/guestbook.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> PHPSESSID
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">FAKEATTACKERSESSIONAAAAAAAAAAA...</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server did not reject arbitrary session ID</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Application may accept arbitrary session identifiers
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/384.html" 
+                   target="_blank">CWE-384</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#81 Session Fixation - Arbitrary Session Accepted</h3>
+                <span class="severity medium">medium</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/userinfo.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> sessid
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">FAKEATTACKERSESSIONAAAAAAAAAAA...</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server did not reject arbitrary session ID</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Application may accept arbitrary session identifiers
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/384.html" 
+                   target="_blank">CWE-384</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#82 Session Fixation - Arbitrary Session Accepted</h3>
+                <span class="severity medium">medium</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/cart.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> PHPSESSID
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">FAKEATTACKERSESSIONAAAAAAAAAAA...</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server did not reject arbitrary session ID</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Application may accept arbitrary session identifiers
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/384.html" 
+                   target="_blank">CWE-384</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#83 Session Fixation - Arbitrary Session Accepted</h3>
+                <span class="severity medium">medium</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/artists.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> PHPSESSID
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">FAKEATTACKERSESSIONAAAAAAAAAAA...</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server did not reject arbitrary session ID</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Application may accept arbitrary session identifiers
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/384.html" 
+                   target="_blank">CWE-384</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#84 Session Fixation - Arbitrary Session Accepted</h3>
+                <span class="severity medium">medium</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> PHPSESSID
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">FAKEATTACKERSESSIONAAAAAAAAAAA...</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server did not reject arbitrary session ID</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Application may accept arbitrary session identifiers
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/384.html" 
+                   target="_blank">CWE-384</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#85 DOM XSS - Source to Sink</h3>
+                <span class="severity medium">medium</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/product.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> JavaScript Code
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">N/A (code analysis)</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Source: location, Code: location=no,directories=no,status=no,menub ar=no,scrollbar=no,resizable=no,copyhistory=yes,width=&#x27;+width+&#x27;,height=&#x27;+height+&#x27;,left=&#x27;+left+&#x27;, top=&#x27;+top+...</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> User-controllable source flows to dangerous sink
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/79.html" 
+                   target="_blank">CWE-79</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#86 Session Fixation - Arbitrary Session Accepted</h3>
+                <span class="severity medium">medium</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/product.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> PHPSESSID
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">FAKEATTACKERSESSIONAAAAAAAAAAA...</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server did not reject arbitrary session ID</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Application may accept arbitrary session identifiers
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/384.html" 
+                   target="_blank">CWE-384</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#87 Missing Security Header: X-Content-Type-Options</h3>
                 <span class="severity low">low</span>
             </div>
             <div class="detail">
@@ -1491,7 +2987,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#44 Missing Security Header: X-XSS-Protection</h3>
+                <h3>#88 Missing Security Header: X-XSS-Protection</h3>
                 <span class="severity low">low</span>
             </div>
             <div class="detail">
@@ -1516,7 +3012,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#45 Missing Security Header: Referrer-Policy</h3>
+                <h3>#89 Missing Security Header: Referrer-Policy</h3>
                 <span class="severity low">low</span>
             </div>
             <div class="detail">
@@ -1541,7 +3037,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#46 Missing Security Header: Permissions-Policy</h3>
+                <h3>#90 Missing Security Header: Permissions-Policy</h3>
                 <span class="severity low">low</span>
             </div>
             <div class="detail">
@@ -1566,7 +3062,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#47 Missing Security Header: X-Permitted-Cross-Domain-Policies</h3>
+                <h3>#91 Missing Security Header: X-Permitted-Cross-Domain-Policies</h3>
                 <span class="severity low">low</span>
             </div>
             <div class="detail">
@@ -1591,7 +3087,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#48 Sensitive Path Exposed: IntelliJ Config</h3>
+                <h3>#92 Sensitive Path Exposed: IntelliJ Config</h3>
                 <span class="severity low">low</span>
             </div>
             <div class="detail">
@@ -1616,7 +3112,381 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#49 Information Disclosure: Server</h3>
+                <h3>#93 Information Disclosure - Header</h3>
+                <span class="severity low">low</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> Server
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">N/A</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">Server: nginx/1.19.0</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Server software disclosed
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/200.html" 
+                   target="_blank">CWE-200</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#94 Information Disclosure - Header</h3>
+                <span class="severity low">low</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> X-Powered-By
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">N/A</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">X-Powered-By: PHP/5.6.40-38+ubuntu20.04.1+deb.sury.org+1</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Technology stack disclosed
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/200.html" 
+                   target="_blank">CWE-200</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#95 Sensitive File Exposed</h3>
+                <span class="severity low">low</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/.idea/workspace.xml
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> Path
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">/.idea/workspace.xml</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">File accessible: IntelliJ workspace</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> IntelliJ workspace is publicly accessible
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/538.html" 
+                   target="_blank">CWE-538</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#96 Missing Rate Limiting</h3>
+                <span class="severity low">low</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> N/A
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">Sent 20 requests in burst</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">20/20 requests succeeded without throttling</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Endpoint lacks rate limiting
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/770.html" 
+                   target="_blank">CWE-770</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#97 Sensitive Data Exposure - Email addresses</h3>
+                <span class="severity low">low</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/search.php?test=query
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> [&#x27;searchFor&#x27;, &#x27;goButton&#x27;]
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">N/A</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">wvs@********.com</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Email addresses exposed with parameters
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/200.html" 
+                   target="_blank">CWE-200</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#98 Sensitive Data Exposure - Email addresses</h3>
+                <span class="severity low">low</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/guestbook.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> [&#x27;name&#x27;, &#x27;text&#x27;, &#x27;submit&#x27;]
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">N/A</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">wvs@********.com</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Email addresses exposed with parameters
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/200.html" 
+                   target="_blank">CWE-200</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#99 Sensitive Data Exposure - Email addresses</h3>
+                <span class="severity low">low</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/userinfo.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> [&#x27;uname&#x27;, &#x27;pass&#x27;]
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">N/A</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">wvs@********.com</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Email addresses exposed with parameters
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/200.html" 
+                   target="_blank">CWE-200</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#100 Sensitive Data Exposure - Email addresses</h3>
+                <span class="severity low">low</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/artists.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> [&#x27;artist&#x27;]
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">N/A</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">wvs@********.com</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Email addresses exposed with parameters
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/200.html" 
+                   target="_blank">CWE-200</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#101 Sensitive Data Exposure - Email addresses</h3>
+                <span class="severity low">low</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> [&#x27;cat&#x27;]
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">N/A</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">wvs@********.com</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Email addresses exposed with parameters
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/200.html" 
+                   target="_blank">CWE-200</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#102 Sensitive Data Exposure - Email addresses</h3>
+                <span class="severity low">low</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/listproducts.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> [&#x27;artist&#x27;]
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">N/A</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">wvs@********.com</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Email addresses exposed with parameters
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/200.html" 
+                   target="_blank">CWE-200</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#103 Sensitive Data Exposure - Email addresses</h3>
+                <span class="severity low">low</span>
+            </div>
+            <div class="detail">
+                <span class="detail-label">URL:</span> http://testphp.vulnweb.com/product.php
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Parameter:</span> [&#x27;pic&#x27;]
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Payload:</span>
+                <div class="code">N/A</div>
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">Evidence:</span>
+                <div class="code">wvs@********.com</div>
+            </div>
+            <div class="detail">
+                <span class="detail-label">Description:</span> Email addresses exposed with parameters
+            </div>
+
+            <div class="detail">
+                <span class="detail-label">CWE:</span> 
+                <a href="https://cwe.mitre.org/data/definitions/200.html" 
+                   target="_blank">CWE-200</a>
+            </div>
+
+        </div>
+
+        <div class="vuln-card">
+            <div class="vuln-header">
+                <h3>#104 Information Disclosure: Server</h3>
                 <span class="severity info">info</span>
             </div>
             <div class="detail">
@@ -1641,7 +3511,7 @@
 
         <div class="vuln-card">
             <div class="vuln-header">
-                <h3>#50 Information Disclosure: X-Powered-By</h3>
+                <h3>#105 Information Disclosure: X-Powered-By</h3>
                 <span class="severity info">info</span>
             </div>
             <div class="detail">
