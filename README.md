@@ -82,9 +82,6 @@ pip install uvicorn fastapi
 # Simple scan with defaults
 vulnflow scan http://example.com
 
-# Quick scan (faster, fewer checks)
-vulnflow scan http://example.com --mode quick
-
 # Verbose output with timing
 vulnflow scan http://example.com -v --timing
 ```
@@ -141,8 +138,6 @@ vulnflow scan [OPTIONS] TARGET_URL
 
 | Option | Short | Default | Description |
 |--------|-------|---------|-------------|
-| `--mode` | | `full` | Scan mode: `full`, `quick`, or `owasp` |
-| `--modules` | | All | Specific modules to run (can be repeated) |
 | `--depth` | `-d` | `2` | Maximum crawl depth |
 | `--max-pages` | `-m` | `50` | Maximum pages to crawl |
 
@@ -210,16 +205,6 @@ vulnflow scan [OPTIONS] TARGET_URL
 
 ---
 
-## Scan Modes
-
-| Mode | Modules Included | Use Case |
-|------|------------------|----------|
-| `quick` | sqli, xss, headers, cors | ⚡ Fast security check |
-| `owasp` | All 12 modules (OWASP focused) | 🔄 Balanced assessment |
-| `full` | All 12 modules (thorough) | 🔍 Complete audit |
-
----
-
 ## Usage Examples
 
 ### Basic Scans
@@ -227,12 +212,6 @@ vulnflow scan [OPTIONS] TARGET_URL
 ```bash
 # Simple scan with defaults
 vulnflow scan http://example.com
-
-# Quick scan (faster, fewer checks)
-vulnflow scan http://example.com --mode quick
-
-# OWASP Top 10 focused scan
-vulnflow scan http://example.com --mode owasp
 
 # Verbose with timing breakdown
 vulnflow scan http://example.com -v --timing
@@ -265,22 +244,6 @@ vulnflow scan http://example.com --workers 10 --timing
 
 # Fast mode with maximum parallelism
 vulnflow scan http://example.com --workers 20 --concurrent-targets 40 --fast --timing
-```
-
-### Specific Module Testing
-
-```bash
-# Only SQL injection and XSS
-vulnflow scan http://example.com --modules sqli --modules xss
-
-# Only injection tests
-vulnflow scan http://example.com --modules sqli --modules nosqli --modules cmdi --modules ssti
-
-# Only misconfigurations
-vulnflow scan http://example.com --modules cors --modules headers --modules backup --modules debug
-
-# Access control tests only
-vulnflow scan http://example.com --modules idor --modules path_traversal --modules forced_browsing
 ```
 
 ### Authenticated Scanning
@@ -323,7 +286,6 @@ vulnflow scan http://example.com --fail-on high
 
 # Full CI/CD example with SARIF output
 vulnflow scan http://staging.example.com \
-    --mode owasp \
     -w 30 \
     -o scan-results.sarif \
     -f sarif \
@@ -335,7 +297,6 @@ vulnflow scan http://staging.example.com \
 
 ```bash
 vulnflow scan https://target.com \
-    --mode owasp \
     --workers 25 \
     --concurrent-targets 50 \
     --timeout 20 \
@@ -535,7 +496,6 @@ jobs:
       - name: Run Security Scan
         run: |
           vulnflow scan ${{ secrets.TARGET_URL }} \
-            --mode owasp \
             --workers 20 \
             --output results.sarif \
             --format sarif \
@@ -555,7 +515,7 @@ security-scan:
   image: python:3.10
   script:
     - pip install vulnflow
-    - vulnflow scan $TARGET_URL --mode owasp -o report.sarif -f sarif --fail-on high
+    - vulnflow scan $TARGET_URL -o report.sarif -f sarif --fail-on high
   artifacts:
     reports:
       sast: report.sarif
@@ -575,7 +535,6 @@ pipeline {
                 sh '''
                     pip install vulnflow
                     vulnflow scan ${TARGET_URL} \
-                        --mode owasp \
                         --workers 20 \
                         --output report.html \
                         --format html \
@@ -609,9 +568,7 @@ pipeline {
 
 ```bash
 # Essential Commands
-vulnflow scan <URL>                              # Basic scan
-vulnflow scan <URL> --mode quick                 # Fast scan
-vulnflow scan <URL> --mode owasp                 # OWASP focused
+vulnflow scan <URL>                              # Full scan
 vulnflow scan <URL> -w 20 --fast                 # High-speed parallel
 vulnflow scan <URL> --modules sqli --modules xss # Specific modules
 vulnflow scan <URL> -o report.html -f html       # HTML report
