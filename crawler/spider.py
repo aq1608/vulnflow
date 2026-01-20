@@ -25,7 +25,6 @@ class AsyncWebCrawler:
         # NEW: Add page saving options
         self.save_pages = save_pages
         self.output_dir = output_dir
-        self.page_counter = 0
 
         # Create output directory if saving is enabled
         if self.save_pages:
@@ -55,24 +54,27 @@ class AsyncWebCrawler:
             return
 
         try:
-            parsed = urlparse(url)
-            path = parsed.path.strip('/').replace('/', '_') or 'index'
-            path = re.sub(r'[^\w\-_]', '_', path)
+            # Use the full URL as filename (sanitized)
+            # Remove protocol and replace special chars with underscores
+            filename = url.replace('http://', '').replace('https://', '')
+            filename = re.sub(r'[^\w\-.]', '_', filename)
 
-            if len(path) > 50:
-                path = path[:50]
-            
-            self.page_counter += 1
-            filename = f"{path}_{self.page_counter:03d}.html"
+            # Add .html extension if not present
+            if not filename.endswith('.html'):
+                filename += '.html'
+
+            # Limit filename length (filesystem limitation)
+            if len(filename) > 200:
+                filename = filename[:200] + '.html'
+
             filepath = os.path.join(self.output_dir, filename)
-            
+
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(html)
 
             # Also save metadata
             metadata_file = filepath.replace('.html', '_metadata.txt')
             with open(metadata_file, 'w', encoding='utf-8') as f:
-                f.write(f"Page: {self.page_counter}\n")
                 f.write(f"URL: {url}\n")
                 f.write(f"Status: {status_code}\n")
 
@@ -111,7 +113,7 @@ class AsyncWebCrawler:
 
                 if response.status == 200 and 'text/html' in content_type:
                     html = await response.text()
-                    
+
                     # NEW: Save page content
                     self._save_page(url, html, response.status)
 
