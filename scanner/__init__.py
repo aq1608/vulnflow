@@ -8,6 +8,7 @@ Provides parallel vulnerability scanning with multiple scanner types.
 """
 
 from .base import BaseScanner, Vulnerability, Severity, OWASPCategory
+from .enhanced_vuln_scanner import EnhancedVulnerabilityScanner  # ✅ ADDED: AI-enhanced scanner
 from .vuln_scanner import VulnerabilityScanner
 from .parallel_executor import ParallelScanExecutor, ScanWorkerPool, RateLimiter
 from .scheduler import ScanScheduler, TaskPriority, get_scanner_priority
@@ -50,6 +51,7 @@ __all__ = [
     'Severity',
     'OWASPCategory',
     'VulnerabilityScanner',
+    'EnhancedVulnerabilityScanner',  # ✅ ADDED
     
     # Parallel execution
     'ParallelScanExecutor',

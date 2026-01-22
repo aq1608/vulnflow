@@ -18,7 +18,7 @@ import json
 
 # Import from project modules
 from crawler.spider import AsyncWebCrawler
-from scanner.vuln_scanner import VulnerabilityScanner
+from scanner.enhanced_vuln_scanner import EnhancedVulnerabilityScanner
 from detector.tech_fingerprint import TechnologyDetector
 from remediation.engine import RemediationEngine
 from reports.generator import ReportGenerator
@@ -415,7 +415,7 @@ async def list_modules():
     Returns information about each security module including
     its OWASP category and description.
     """
-    scanner = VulnerabilityScanner()
+    scanner = EnhancedVulnerabilityScanner()
     return {
         "modules": scanner.get_scanner_info(),
         "scan_modes": {
@@ -881,7 +881,7 @@ async def run_scan(scan_id: str, request: ScanRequest):
         if scans[scan_id]["status"] == ScanStatus.CANCELLED:
             return
         
-        scanner = VulnerabilityScanner(scanner_config)
+        scanner = EnhancedVulnerabilityScanner(scanner_config)
         
         # Progress callback for real-time updates
         def progress_callback(completed, total, message):

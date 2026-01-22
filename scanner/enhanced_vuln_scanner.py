@@ -1,6 +1,7 @@
 """
-Enhanced Vulnerability Scanner with Groq AI Integration
+Enhanced Vulnerability Scanner with Groq AI Integration - COMPLETE VERSION
 Optimized for speed while maintaining low noise/false positives
+NOW INCLUDES ALL 30+ SCANNERS from original VulnerabilityScanner
 """
 
 from typing import List, Dict, Optional
@@ -13,38 +14,80 @@ from .base import BaseScanner, Vulnerability, Severity, OWASPCategory
 from .parallel_executor import ParallelScanExecutor
 from .ai.groq_analyzer import GroqAnalyzer, AIAnalysisResult
 
-# Import all scanner modules (same as original)
+# =====================================================
+# COMPLETE SCANNER IMPORTS - ALL 30+ SCANNERS
+# =====================================================
+
+# Injection scanners (7 total)
 from .injection.sqli import SQLInjectionScanner
 from .injection.nosqli import NoSQLInjectionScanner
 from .injection.cmdi import CommandInjectionScanner
 from .injection.ssti import SSTIScanner
+from .injection.ldapi import LDAPInjectionScanner
+from .injection.xpath import XPathInjectionScanner
+from .injection.hhi import HostHeaderInjectionScanner
+
+# XSS scanners (2 total)
 from .xss.xss import XSSScanner
+from .xss.dom_xss import DOMXSSScanner
+
+# Access control scanners (5 total)
 from .access_control.idor import IDORScanner
 from .access_control.path_traversal import PathTraversalScanner
+from .access_control.forced_browsing import ForcedBrowsingScanner
+from .access_control.privilege_escalation import PrivilegeEscalationScanner
 from .access_control.jwt_vulnerabilities import JWTVulnerabilitiesScanner
+
+# Misconfiguration scanners (7 total)
 from .misconfig.headers import SecurityHeadersScanner
 from .misconfig.cors import CORSScanner
+from .misconfig.debug import DebugModeScanner
+from .misconfig.backup import BackupFileScanner
 from .misconfig.ssl_tls import SSLTLSScanner
+from .misconfig.cookie_security import CookieSecurityScanner
+from .misconfig.information_disclosure import InformationDisclosureScanner
+
+# SSRF scanner (1 total)
 from .ssrf.ssrf import SSRFScanner
+
+# XXE scanner (1 total)
 from .xxe.xxe import XXEScanner
+
+# Deserialization scanner (1 total)
 from .deserialization.insecure_deserialization import InsecureDeserializationScanner
-from .api_security.graphql import GraphQLScanner
+
+# API security scanners (3 total)
 from .api_security.rate_limiting import RateLimitingScanner
+from .api_security.mass_assignment import MassAssignmentScanner
+from .api_security.graphql import GraphQLScanner
+
+# Authentication scanners (3 total)
+from .authentication.brute_force import BruteForceScanner
+from .authentication.session_fixation import SessionFixationScanner
+from .authentication.weak_password import WeakPasswordPolicyScanner
+
+# Cryptographic scanners (2 total)
+from .cryptographic.weak_crypto import WeakCryptoScanner
+from .cryptographic.sensitive_data_exposure import SensitiveDataExposureScanner
+
+# CVE scanner (1 total)
+from .cve.known_cve import KnownCVEScanner
 
 
 class EnhancedVulnerabilityScanner:
     """
     Enhanced vulnerability scanner with:
     1. Groq AI integration for smarter detection
-    2. Optimized parallel execution
-    3. Smart payload selection
-    4. False positive reduction
-    5. Automatic fallback to non-AI mode
+    2. ALL 30+ scanners from original VulnerabilityScanner
+    3. Optimized parallel execution
+    4. Smart payload selection
+    5. False positive reduction
+    6. Automatic fallback to non-AI mode
     """
     
     def __init__(self, scan_config: Dict = None):
         """
-        Initialize enhanced scanner.
+        Initialize enhanced scanner with ALL available scanners.
         
         Args:
             scan_config: Configuration dict with options:
@@ -52,29 +95,12 @@ class EnhancedVulnerabilityScanner:
                 - api_key: Groq API key (optional - overrides environment variable)
                 - scan_depth: 'quick', 'normal', 'deep'
                 - parallel: Enable parallel scanning (default: True)
-                - max_concurrent_scanners: Default 8 (increased from 5)
-                - max_concurrent_targets: Default 15 (increased from 10)
-                - requests_per_second: Default 75 (increased from 50)
-                - timeout: Default 20 (decreased from 30 for speed)
+                - max_concurrent_scanners: Default 8
+                - max_concurrent_targets: Default 15
+                - requests_per_second: Default 75
+                - timeout: Default 20
                 - smart_payloads: Use AI-generated payloads (default: True)
                 - confidence_threshold: Minimum confidence to report (default: 0.6)
-        
-        Examples:
-            # Option 1: Use environment variable GROQ_API_KEY
-            scanner = EnhancedVulnerabilityScanner()
-            
-            # Option 2: Provide API key directly in config
-            config = {'api_key': 'gsk_your_api_key_here'}
-            scanner = EnhancedVulnerabilityScanner(config)
-            
-            # Option 3: Full configuration with API key
-            config = {
-                'api_key': 'gsk_...',
-                'mode': 'owasp',
-                'confidence_threshold': 0.75,
-                'max_concurrent_scanners': 10
-            }
-            scanner = EnhancedVulnerabilityScanner(config)
         """
         self.config = scan_config or {}
         self.scan_depth = self.config.get('scan_depth', 'normal')
@@ -84,84 +110,109 @@ class EnhancedVulnerabilityScanner:
         self.max_concurrent_scanners = self.config.get('max_concurrent_scanners', 8)
         self.max_concurrent_targets = self.config.get('max_concurrent_targets', 15)
         self.requests_per_second = self.config.get('requests_per_second', 75)
-        self.timeout = self.config.get('timeout', 20)  # Reduced for faster scans
+        self.timeout = self.config.get('timeout', 20)
         
         # AI settings
         self.smart_payloads = self.config.get('smart_payloads', True)
         self.confidence_threshold = self.config.get('confidence_threshold', 0.6)
         
         # Initialize Groq analyzer with optional API key
-        # Priority: config['api_key'] > environment variable > None
         api_key = self.config.get('api_key', None)
         self.ai_analyzer = GroqAnalyzer(api_key=api_key)
         
         # Progress callback
         self._progress_callback = None
         
-        # Initialize all available scanners (same as original)
+        # =====================================================
+        # INITIALIZE ALL 30+ SCANNERS - COMPLETE LIST
+        # =====================================================
         self.all_scanners = {
-            # A01:2021 - Broken Access Control
+            # A01:2021 - Broken Access Control (5 scanners)
             'idor': IDORScanner(),
             'path_traversal': PathTraversalScanner(),
+            'forced_browsing': ForcedBrowsingScanner(),
+            'privilege_escalation': PrivilegeEscalationScanner(),
             'jwt': JWTVulnerabilitiesScanner(),
             
-            # A02:2021 - Cryptographic Failures
+            # A02:2021 - Cryptographic Failures (3 scanners)
             'ssl_tls': SSLTLSScanner(),
+            'weak_crypto': WeakCryptoScanner(),
+            'sensitive_data_exposure': SensitiveDataExposureScanner(),
             
-            # A03:2021 - Injection
+            # A03:2021 - Injection (9 scanners)
             'sqli': SQLInjectionScanner(),
             'nosqli': NoSQLInjectionScanner(),
             'cmdi': CommandInjectionScanner(),
             'ssti': SSTIScanner(),
+            'ldapi': LDAPInjectionScanner(),
+            'xpath': XPathInjectionScanner(),
+            'hhi': HostHeaderInjectionScanner(),
             'xxe': XXEScanner(),
+            'xss': XSSScanner(),
+            'dom_xss': DOMXSSScanner(),
             
-            # A04:2021 - Insecure Design
+            # A04:2021 - Insecure Design (1 scanner)
             'ssrf': SSRFScanner(),
             
-            # A05:2021 - Security Misconfiguration
+            # A05:2021 - Security Misconfiguration (7 scanners)
             'headers': SecurityHeadersScanner(),
             'cors': CORSScanner(),
+            'debug': DebugModeScanner(),
+            'backup': BackupFileScanner(),
+            'cookie_security': CookieSecurityScanner(),
+            'information_disclosure': InformationDisclosureScanner(),
             
-            # A06:2021 - Vulnerable Components
-            # (handled by tech detection + CVE scanner)
+            # A06:2021 - Vulnerable Components (1 scanner)
+            'cve': KnownCVEScanner(),
             
-            # A07:2021 - Identification and Authentication Failures
-            # (JWT already covered above)
+            # A07:2021 - Identification and Authentication Failures (3 scanners)
+            'brute_force': BruteForceScanner(),
+            'session_fixation': SessionFixationScanner(),
+            'weak_password': WeakPasswordPolicyScanner(),
+            # JWT already covered above
             
-            # A08:2021 - Software and Data Integrity Failures
+            # A08:2021 - Software and Data Integrity Failures (1 scanner)
             'deserialization': InsecureDeserializationScanner(),
             
             # A09:2021 - Security Logging and Monitoring Failures
-            # (passive detection)
+            # (passive detection - integrated into other scanners)
             
             # A10:2021 - Server-Side Request Forgery
             # (SSRF already covered above)
             
-            # API Security
+            # API Security (3 scanners)
             'graphql': GraphQLScanner(),
             'rate_limiting': RateLimitingScanner(),
-            
-            # Cross-Site Scripting (part of A03)
-            'xss': XSSScanner(),
+            'mass_assignment': MassAssignmentScanner(),
         }
         
-        # Scan mode presets (optimized)
+        print(f"[*] Initialized {len(self.all_scanners)} total scanners")
+        
+        # =====================================================
+        # SCAN MODE PRESETS - UPDATED WITH ALL SCANNERS
+        # =====================================================
         self.scan_modes = {
             'quick': [
+                # Fast scan - only most critical
                 'sqli', 'xss', 'headers', 'cors', 'ssl_tls'
             ],
             'standard': [
+                # Balanced scan - common vulnerabilities
                 'sqli', 'nosqli', 'xss', 'cmdi', 'ssti',
                 'headers', 'cors', 'idor', 'path_traversal',
-                'ssrf', 'ssl_tls', 'jwt'
+                'ssrf', 'ssl_tls', 'jwt', 'rate_limiting',
+                'information_disclosure', 'cookie_security'
             ],
             'owasp': [
-                'sqli', 'nosqli', 'xss', 'cmdi', 'ssti', 'xxe',
-                'idor', 'path_traversal', 'jwt', 'ssl_tls',
-                'headers', 'cors', 'rate_limiting',
-                'deserialization', 'ssrf', 'graphql'
+                # Complete OWASP Top 10 2021 coverage
+                'sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi', 'ssti', 'ldapi', 'xpath', 'xxe',
+                'idor', 'path_traversal', 'forced_browsing', 'privilege_escalation', 'jwt',
+                'ssl_tls', 'weak_crypto', 'sensitive_data_exposure',
+                'headers', 'cors', 'debug', 'cookie_security', 'information_disclosure',
+                'rate_limiting', 'deserialization', 'ssrf', 'graphql',
+                'brute_force', 'session_fixation', 'weak_password'
             ],
-            'full': list(self.all_scanners.keys()),
+            'full': list(self.all_scanners.keys()),  # ALL 30+ scanners
         }
         
         # Select active scanners
@@ -226,6 +277,7 @@ class EnhancedVulnerabilityScanner:
         print(f"\n{'='*60}")
         print(f"  Enhanced VulnFlow Scanner (AI: {self.ai_analyzer.mode.value})")
         print(f"  Active Scanners: {len(self.active_scanners)}")
+        print(f"  Total Available: {len(self.all_scanners)}")
         print(f"  Parallel Workers: {self.max_concurrent_scanners}")
         print(f"{'='*60}\n")
         
@@ -248,8 +300,6 @@ class EnhancedVulnerabilityScanner:
         
         if urls_count == 0 and forms_count == 0:
             print("⚠️  Warning: No URLs or forms found to scan")
-            print("    The crawler may not have found any content.")
-            print("    Check your target URL and try again.")
             return []
         
         print(f"[*] Crawl results: {urls_count} URLs, {forms_count} forms")
@@ -261,7 +311,6 @@ class EnhancedVulnerabilityScanner:
             if tech_stack:
                 print(f"  ✓ Detected: {', '.join(tech_stack)}")
             else:
-                # Fallback to common stack
                 tech_stack = ['PHP', 'MySQL', 'Apache']
                 print(f"  ⚠️  Could not detect - using default: {', '.join(tech_stack)}")
         
@@ -287,10 +336,10 @@ class EnhancedVulnerabilityScanner:
         # Create optimized HTTP session
         connector = aiohttp.TCPConnector(
             ssl=False,
-            limit=self.max_concurrent_targets * 3,  # Increased pool
+            limit=self.max_concurrent_targets * 3,
             limit_per_host=self.max_concurrent_targets,
             ttl_dns_cache=300,
-            force_close=False,  # Reuse connections
+            force_close=False,
             enable_cleanup_closed=True
         )
         timeout = aiohttp.ClientTimeout(total=self.timeout, connect=5)
@@ -298,13 +347,16 @@ class EnhancedVulnerabilityScanner:
         async with aiohttp.ClientSession(
             connector=connector,
             timeout=timeout,
-            headers={'User-Agent': 'VulnFlow-Enhanced/2.0'}
+            headers={
+                'User-Agent': 'VulnFlow/2.0 AI-Enhanced Security Scanner',
+                'Accept': '*/*'
+            }
         ) as session:
-            # Execute parallel scans
-            # Convert dicts to lists of tuples for executor
+            # Convert to list for parallel executor
             site_scanners_list = list(site_scanners.items())
             param_scanners_list = list(param_scanners.items())
             
+            # Execute all scans in parallel
             raw_vulnerabilities = await self.executor.execute_all_scans(
                 session,
                 targets,
@@ -349,12 +401,6 @@ class EnhancedVulnerabilityScanner:
     async def _detect_tech_stack(self, crawl_results: Dict) -> List[str]:
         """
         Auto-detect technology stack from crawl results
-        
-        Args:
-            crawl_results: Results from crawler
-            
-        Returns:
-            List of detected technologies
         """
         tech_stack = []
         
@@ -366,40 +412,37 @@ class EnhancedVulnerabilityScanner:
             url_keys = list(urls_data.keys())
             if url_keys:
                 test_url = url_keys[0]
-                # Check if we have response data
-                if test_url in urls_data and 'headers' in urls_data[test_url]:
-                    headers = urls_data[test_url]['headers']
-                else:
-                    headers = {}
+                url_data = urls_data[test_url]
+        elif isinstance(urls_data, list) and len(urls_data) > 0:
+            test_url = urls_data[0]
+            url_data = {}
+        else:
+            return tech_stack
         
         if not test_url:
-            return []
+            return tech_stack
         
-        # Detect from headers if available
-        if headers:
-            # Detect web server
+        # Detect from headers (if available)
+        if isinstance(url_data, dict):
+            headers = url_data.get('headers', {})
+            
+            # Server detection
             server = headers.get('Server', '').lower()
-            if 'apache' in server:
-                tech_stack.append('Apache')
-            elif 'nginx' in server:
+            if 'nginx' in server:
                 tech_stack.append('Nginx')
-            elif 'iis' in server or 'microsoft' in server:
+            elif 'apache' in server:
+                tech_stack.append('Apache')
+            elif 'iis' in server:
                 tech_stack.append('IIS')
             
-            # Detect programming language
-            powered_by = headers.get('X-Powered-By', '').lower()
-            if 'php' in powered_by:
+            # Framework detection
+            x_powered_by = headers.get('X-Powered-By', '').lower()
+            if 'php' in x_powered_by:
                 tech_stack.append('PHP')
-                if 'MySQL' not in tech_stack:
-                    tech_stack.append('MySQL')  # Common with PHP
-            elif 'express' in powered_by or 'node' in powered_by:
-                tech_stack.append('Node.js')
-                if 'MongoDB' not in tech_stack:
-                    tech_stack.append('MongoDB')  # Common with Node
-            elif 'asp.net' in powered_by:
+            elif 'asp.net' in x_powered_by:
                 tech_stack.append('ASP.NET')
                 if 'MSSQL' not in tech_stack:
-                    tech_stack.append('MSSQL')  # Common with ASP.NET
+                    tech_stack.append('MSSQL')
         
         # Detect from URL patterns
         if '.php' in test_url:
@@ -435,7 +478,6 @@ class EnhancedVulnerabilityScanner:
             if scanner_name in self.active_scanners:
                 scanner = self.active_scanners[scanner_name]
                 
-                # Map scanner names to vulnerability types
                 vuln_type_map = {
                     'sqli': 'SQL Injection',
                     'xss': 'XSS',
@@ -449,7 +491,6 @@ class EnhancedVulnerabilityScanner:
                     )
                     
                     if payloads and hasattr(scanner, 'payloads'):
-                        # Prepend AI payloads to existing ones
                         scanner.payloads = payloads + scanner.payloads[:10]
                         self.metrics['smart_payloads_used'] += len(payloads)
                         print(f"  ✓ Added {len(payloads)} smart payloads for {scanner_name}")
@@ -470,12 +511,11 @@ class EnhancedVulnerabilityScanner:
         
         validated = []
         
-        # Process in batches to avoid overwhelming the API
+        # Process in batches
         batch_size = 10
         for i in range(0, len(vulnerabilities), batch_size):
             batch = vulnerabilities[i:i+batch_size]
             
-            # Analyze each vulnerability
             tasks = []
             for vuln in batch:
                 task = self._analyze_single_vulnerability(vuln, tech_stack)
@@ -485,21 +525,17 @@ class EnhancedVulnerabilityScanner:
             
             for vuln, result in zip(batch, results):
                 if isinstance(result, Exception):
-                    # On error, include the vulnerability with original confidence
                     validated.append(vuln)
                     continue
                 
                 ai_result: AIAnalysisResult = result
                 self.metrics['total_ai_calls'] += 1
                 
-                # Filter based on confidence threshold
                 if ai_result.confidence_score >= self.confidence_threshold:
-                    # Enhance vulnerability with AI insights
                     enhanced_vuln = self._enhance_vulnerability(vuln, ai_result)
                     validated.append(enhanced_vuln)
                     self.metrics['ai_enhanced_findings'] += 1
                 else:
-                    # Likely false positive
                     self.metrics['false_positives_filtered'] += 1
                     print(f"  [Filtered] {vuln.vuln_type} (confidence: {ai_result.confidence_score:.2f})")
         
@@ -555,7 +591,6 @@ class EnhancedVulnerabilityScanner:
         enhanced_description += f"Exploitation Complexity: {ai_result.exploitation_complexity.title()}\n"
         enhanced_description += f"Business Impact: {ai_result.business_impact}"
         
-        # Create new vulnerability with enhanced data
         return Vulnerability(
             vuln_type=vuln.vuln_type,
             severity=new_severity,
@@ -569,19 +604,16 @@ class EnhancedVulnerabilityScanner:
         )
     
     def _prepare_targets(self, crawl_results: Dict) -> List[Dict]:
-        """Prepare scan targets from crawl results (optimized)"""
+        """Prepare scan targets from crawl results"""
         targets = []
         
         # URL-based targets
         urls_data = crawl_results.get('urls', {})
         
-        # Handle both dict and list formats
         url_list = []
         if isinstance(urls_data, dict):
-            # Dictionary format: {'url': {'status': 200, ...}}
             url_list = list(urls_data.keys())
         elif isinstance(urls_data, list):
-            # List format: ['url1', 'url2', ...]
             url_list = urls_data
         
         for url in url_list:
@@ -592,13 +624,13 @@ class EnhancedVulnerabilityScanner:
                 for param in query_params:
                     targets.append({
                         'url': url,
-                        'params': param,  # Changed from 'param' to 'params'
+                        'params': param,
                         'type': 'query'
                     })
             else:
                 targets.append({
                     'url': url,
-                    'params': None,  # Changed from 'param' to 'params'
+                    'params': None,
                     'type': 'page'
                 })
         
@@ -607,7 +639,7 @@ class EnhancedVulnerabilityScanner:
             for input_field in form_data.get('inputs', []):
                 targets.append({
                     'url': form_data['action'],
-                    'params': input_field['name'],  # Changed from 'param' to 'params'
+                    'params': input_field['name'],
                     'type': 'form',
                     'method': form_data.get('method', 'GET'),
                     'form_data': form_data
@@ -617,33 +649,25 @@ class EnhancedVulnerabilityScanner:
     
     def _get_base_url(self, crawl_results: Dict) -> str:
         """Extract base URL from crawl results"""
-        
-        # Method 1: Try urls field (can be dict or list)
         urls_data = crawl_results.get('urls')
         if urls_data:
-            # If it's a dictionary (your crawler format)
             if isinstance(urls_data, dict):
-                # Get first URL from dictionary keys
                 url_keys = list(urls_data.keys())
                 if url_keys:
                     parsed = urlparse(url_keys[0])
                     return f"{parsed.scheme}://{parsed.netloc}"
-            # If it's a list (standard format)
             elif isinstance(urls_data, list) and len(urls_data) > 0:
                 parsed = urlparse(urls_data[0])
                 return f"{parsed.scheme}://{parsed.netloc}"
         
-        # Method 2: Try base_url field
         if crawl_results.get('base_url'):
             parsed = urlparse(crawl_results['base_url'])
             return f"{parsed.scheme}://{parsed.netloc}"
         
-        # Method 3: Try target field
         if crawl_results.get('target'):
             parsed = urlparse(crawl_results['target'])
             return f"{parsed.scheme}://{parsed.netloc}"
         
-        # Method 4: Get from forms
         forms = crawl_results.get('forms', [])
         if forms and len(forms) > 0:
             form = forms[0]
@@ -657,7 +681,9 @@ class EnhancedVulnerabilityScanner:
     def _get_active_site_scanners(self) -> Dict:
         """Get scanners that scan entire sites"""
         site_scanner_names = [
-            'headers', 'cors', 'ssl_tls', 'rate_limiting', 'graphql'
+            'headers', 'cors', 'ssl_tls', 'rate_limiting', 'graphql',
+            'debug', 'backup', 'cookie_security', 'information_disclosure',
+            'cve', 'weak_crypto', 'sensitive_data_exposure'
         ]
         return {k: v for k, v in self.active_scanners.items() 
                 if k in site_scanner_names}
@@ -665,7 +691,9 @@ class EnhancedVulnerabilityScanner:
     def _get_active_param_scanners(self) -> Dict:
         """Get scanners that test parameters"""
         site_scanner_names = [
-            'headers', 'cors', 'ssl_tls', 'rate_limiting', 'graphql'
+            'headers', 'cors', 'ssl_tls', 'rate_limiting', 'graphql',
+            'debug', 'backup', 'cookie_security', 'information_disclosure',
+            'cve', 'weak_crypto', 'sensitive_data_exposure'
         ]
         return {k: v for k, v in self.active_scanners.items() 
                 if k not in site_scanner_names}
@@ -695,3 +723,8 @@ class EnhancedVulnerabilityScanner:
             **self.metrics,
             'executor_stats': self.executor.stats if self.executor else {}
         }
+    
+    def shutdown(self):
+        """Clean shutdown"""
+        if self.executor:
+            self.executor.shutdown()
