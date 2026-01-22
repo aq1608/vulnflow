@@ -262,7 +262,7 @@ class ConnectionPool:
                 connector=self._connector,
                 timeout=timeout,
                 headers={
-                    'User-Agent': 'VulnFlow/1.0.4 Security Scanner',
+                    'User-Agent': 'VulnFlow/2.0.1 Security Scanner',
                     'Accept': '*/*',
                     'Accept-Language': 'en-US,en;q=0.9',
                 }
