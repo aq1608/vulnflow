@@ -28,7 +28,7 @@ class SSLTLSScanner(BaseScanner):
 
     name="SSL/TLS Security Scanner",
     description="Detects SSL/TLS misconfigurations and weaknesses",
-    owasp_category=OWASPCategory.A02_CRYPTOGRAPHIC_FAILURES
+    owasp_category=OWASPCategory.A04_CRYPTOGRAPHIC_FAILURES
     
     def __init__(self):
         

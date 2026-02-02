@@ -25,7 +25,7 @@ class RateLimitingScanner(BaseScanner):
     
     name="Rate Limiting Scanner",
     description="Detects missing or weak rate limiting",
-    owasp_category=OWASPCategory.A05_SECURITY_MISCONFIGURATION
+    owasp_category=OWASPCategory.A02_SECURITY_MISCONFIGURATION
 
     def __init__(self):
         # Endpoints to test for rate limiting

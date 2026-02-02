@@ -14,7 +14,7 @@ class DebugModeScanner(BaseScanner):
     
     name = "Debug Mode Scanner"
     description = "Detects debug mode and development configurations exposed in production"
-    owasp_category = OWASPCategory.A05_SECURITY_MISCONFIGURATION
+    owasp_category = OWASPCategory.A02_SECURITY_MISCONFIGURATION
     
     # Debug endpoints to check
     DEBUG_ENDPOINTS = [

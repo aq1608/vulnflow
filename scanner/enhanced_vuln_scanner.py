@@ -1,7 +1,7 @@
+# scanner/enhanced_vuln_scanner.py
 """
-Enhanced Vulnerability Scanner with Groq AI Integration - COMPLETE VERSION
+Enhanced Vulnerability Scanner with Groq AI Integration - OWASP 2025 VERSION
 Optimized for speed while maintaining low noise/false positives
-NOW INCLUDES ALL 30+ SCANNERS from original VulnerabilityScanner
 """
 
 from typing import List, Dict, Optional
@@ -15,30 +15,19 @@ from .parallel_executor import ParallelScanExecutor
 from .ai.groq_analyzer import GroqAnalyzer, AIAnalysisResult
 
 # =====================================================
-# COMPLETE SCANNER IMPORTS - ALL 30+ SCANNERS
+# COMPLETE SCANNER IMPORTS - ALL 35+ SCANNERS
+# Organized by OWASP Top 10 2025
 # =====================================================
 
-# Injection scanners (7 total)
-from .injection.sqli import SQLInjectionScanner
-from .injection.nosqli import NoSQLInjectionScanner
-from .injection.cmdi import CommandInjectionScanner
-from .injection.ssti import SSTIScanner
-from .injection.ldapi import LDAPInjectionScanner
-from .injection.xpath import XPathInjectionScanner
-from .injection.hhi import HostHeaderInjectionScanner
-
-# XSS scanners (2 total)
-from .xss.xss import XSSScanner
-from .xss.dom_xss import DOMXSSScanner
-
-# Access control scanners (5 total)
+# ----- A01:2025 - Broken Access Control (now includes SSRF) -----
 from .access_control.idor import IDORScanner
 from .access_control.path_traversal import PathTraversalScanner
 from .access_control.forced_browsing import ForcedBrowsingScanner
 from .access_control.privilege_escalation import PrivilegeEscalationScanner
 from .access_control.jwt_vulnerabilities import JWTVulnerabilitiesScanner
+from .access_control.ssrf import SSRFScanner  # Moved from A10:2021 to A01:2025
 
-# Misconfiguration scanners (7 total)
+# ----- A02:2025 - Security Misconfiguration (moved up from A05:2021) -----
 from .misconfig.headers import SecurityHeadersScanner
 from .misconfig.cors import CORSScanner
 from .misconfig.debug import DebugModeScanner
@@ -47,38 +36,57 @@ from .misconfig.ssl_tls import SSLTLSScanner
 from .misconfig.cookie_security import CookieSecurityScanner
 from .misconfig.information_disclosure import InformationDisclosureScanner
 
-# SSRF scanner (1 total)
-from .ssrf.ssrf import SSRFScanner
+# ----- A03:2025 - Software Supply Chain Failures (expanded from A06:2021) -----
+from .cve.known_cve import KnownCVEScanner
+from .supply_chain.dependency_check import DependencyCheckScanner
+from .supply_chain.integrity_check import IntegrityCheckScanner
+from .supply_chain.outdated_components import OutdatedComponentsScanner
 
-# XXE scanner (1 total)
+# ----- A04:2025 - Cryptographic Failures (moved down from A02:2021) -----
+from .cryptographic.weak_crypto import WeakCryptoScanner
+from .cryptographic.sensitive_data_exposure import SensitiveDataExposureScanner
+
+# ----- A05:2025 - Injection (moved down from A03:2021, still critical) -----
+from .injection.sqli import SQLInjectionScanner
+from .injection.nosqli import NoSQLInjectionScanner
+from .injection.cmdi import CommandInjectionScanner
+from .injection.ssti import SSTIScanner
+from .injection.ldapi import LDAPInjectionScanner
+from .injection.xpath import XPathInjectionScanner
+from .injection.hhi import HostHeaderInjectionScanner
+from .injection.xss import XSSScanner
+from .injection.dom_xss import DOMXSSScanner
 from .xxe.xxe import XXEScanner
 
-# Deserialization scanner (1 total)
-from .deserialization.insecure_deserialization import InsecureDeserializationScanner
-
-# API security scanners (3 total)
+# ----- A06:2025 - Insecure Design -----
 from .api_security.rate_limiting import RateLimitingScanner
-from .api_security.mass_assignment import MassAssignmentScanner
-from .api_security.graphql import GraphQLScanner
 
-# Authentication scanners (3 total)
+# ----- A07:2025 - Authentication Failures -----
 from .authentication.brute_force import BruteForceScanner
 from .authentication.session_fixation import SessionFixationScanner
 from .authentication.weak_password import WeakPasswordPolicyScanner
 
-# Cryptographic scanners (2 total)
-from .cryptographic.weak_crypto import WeakCryptoScanner
-from .cryptographic.sensitive_data_exposure import SensitiveDataExposureScanner
+# ----- A08:2025 - Software or Data Integrity Failures -----
+from .deserialization.insecure_deserialization import InsecureDeserializationScanner
 
-# CVE scanner (1 total)
-from .cve.known_cve import KnownCVEScanner
+# ----- A09:2025 - Security Logging and Alerting Failures -----
+# (Passive detection - limited black-box testing capability)
+
+# ----- A10:2025 - Mishandling of Exceptional Conditions (NEW) -----
+from .exceptional_conditions.error_handling import ErrorHandlingScanner
+from .exceptional_conditions.fail_open import FailOpenScanner
+from .exceptional_conditions.resource_limits import ResourceLimitsScanner
+
+# ----- API Security (Additional) -----
+from .api_security.mass_assignment import MassAssignmentScanner
+from .api_security.graphql import GraphQLScanner
 
 
 class EnhancedVulnerabilityScanner:
     """
     Enhanced vulnerability scanner with:
     1. Groq AI integration for smarter detection
-    2. ALL 30+ scanners from original VulnerabilityScanner
+    2. ALL 35+ scanners covering OWASP Top 10 2025
     3. Optimized parallel execution
     4. Smart payload selection
     5. False positive reduction
@@ -124,22 +132,52 @@ class EnhancedVulnerabilityScanner:
         self._progress_callback = None
         
         # =====================================================
-        # INITIALIZE ALL 30+ SCANNERS - COMPLETE LIST
+        # INITIALIZE ALL 35+ SCANNERS - OWASP 2025 ORGANIZED
         # =====================================================
         self.all_scanners = {
-            # A01:2021 - Broken Access Control (5 scanners)
+            # ==========================================
+            # A01:2025 - Broken Access Control
+            # (Now includes SSRF - previously A10:2021)
+            # ==========================================
             'idor': IDORScanner(),
             'path_traversal': PathTraversalScanner(),
             'forced_browsing': ForcedBrowsingScanner(),
             'privilege_escalation': PrivilegeEscalationScanner(),
             'jwt': JWTVulnerabilitiesScanner(),
+            'ssrf': SSRFScanner(),  # Moved from A10:2021
             
-            # A02:2021 - Cryptographic Failures (3 scanners)
+            # ==========================================
+            # A02:2025 - Security Misconfiguration
+            # (Moved UP from A05:2021, expanded for cloud/infra)
+            # ==========================================
+            'headers': SecurityHeadersScanner(),
+            'cors': CORSScanner(),
+            'debug': DebugModeScanner(),
+            'backup': BackupFileScanner(),
             'ssl_tls': SSLTLSScanner(),
+            'cookie_security': CookieSecurityScanner(),
+            'information_disclosure': InformationDisclosureScanner(),
+            
+            # ==========================================
+            # A03:2025 - Software Supply Chain Failures
+            # (Renamed from "Vulnerable Components", now covers CI/CD, deps)
+            # ==========================================
+            'known_cve': KnownCVEScanner(),
+            'dependency_check': DependencyCheckScanner(),      # NEW
+            'integrity_check': IntegrityCheckScanner(),        # NEW
+            'outdated_components': OutdatedComponentsScanner(), # NEW
+            
+            # ==========================================
+            # A04:2025 - Cryptographic Failures
+            # (Moved DOWN from A02:2021)
+            # ==========================================
             'weak_crypto': WeakCryptoScanner(),
             'sensitive_data_exposure': SensitiveDataExposureScanner(),
             
-            # A03:2021 - Injection (9 scanners)
+            # ==========================================
+            # A05:2025 - Injection
+            # (Moved DOWN from A03:2021, still critical)
+            # ==========================================
             'sqli': SQLInjectionScanner(),
             'nosqli': NoSQLInjectionScanner(),
             'cmdi': CommandInjectionScanner(),
@@ -147,53 +185,56 @@ class EnhancedVulnerabilityScanner:
             'ldapi': LDAPInjectionScanner(),
             'xpath': XPathInjectionScanner(),
             'hhi': HostHeaderInjectionScanner(),
-            'xxe': XXEScanner(),
             'xss': XSSScanner(),
             'dom_xss': DOMXSSScanner(),
+            'xxe': XXEScanner(),
             
-            # A04:2021 - Insecure Design (1 scanner)
-            'ssrf': SSRFScanner(),
-            
-            # A05:2021 - Security Misconfiguration (7 scanners)
-            'headers': SecurityHeadersScanner(),
-            'cors': CORSScanner(),
-            'debug': DebugModeScanner(),
-            'backup': BackupFileScanner(),
-            'cookie_security': CookieSecurityScanner(),
-            'information_disclosure': InformationDisclosureScanner(),
-            
-            # A06:2021 - Vulnerable Components (1 scanner)
-            'cve': KnownCVEScanner(),
-            
-            # A07:2021 - Identification and Authentication Failures (3 scanners)
+            # ==========================================
+            # A06:2025 - Insecure Design
+            # ==========================================
+            'rate_limiting': RateLimitingScanner(),
             'brute_force': BruteForceScanner(),
+            
+            # ==========================================
+            # A07:2025 - Authentication Failures
+            # ==========================================
             'session_fixation': SessionFixationScanner(),
             'weak_password': WeakPasswordPolicyScanner(),
-            # JWT already covered above
             
-            # A08:2021 - Software and Data Integrity Failures (1 scanner)
+            # ==========================================
+            # A08:2025 - Software or Data Integrity Failures
+            # ==========================================
             'deserialization': InsecureDeserializationScanner(),
             
-            # A09:2021 - Security Logging and Monitoring Failures
-            # (passive detection - integrated into other scanners)
+            # ==========================================
+            # A09:2025 - Security Logging and Alerting Failures
+            # (Limited black-box testing - passive detection only)
+            # ==========================================
+            # Covered passively through other scanners
             
-            # A10:2021 - Server-Side Request Forgery
-            # (SSRF already covered above)
+            # ==========================================
+            # A10:2025 - Mishandling of Exceptional Conditions
+            # (🆕 NEW CATEGORY - replaces SSRF which moved to A01)
+            # ==========================================
+            'error_handling': ErrorHandlingScanner(),    # NEW
+            'fail_open': FailOpenScanner(),              # NEW
+            'resource_limits': ResourceLimitsScanner(),  # NEW
             
-            # API Security (3 scanners)
+            # ==========================================
+            # API Security (Additional)
+            # ==========================================
             'graphql': GraphQLScanner(),
-            'rate_limiting': RateLimitingScanner(),
             'mass_assignment': MassAssignmentScanner(),
         }
         
-        print(f"[*] Initialized {len(self.all_scanners)} total scanners")
+        print(f"[*] Initialized {len(self.all_scanners)} total scanners (OWASP 2025)")
         
         # =====================================================
-        # SCAN MODE PRESETS - UPDATED WITH ALL SCANNERS
+        # SCAN MODE PRESETS - OWASP 2025 ALIGNED
         # =====================================================
         self.scan_modes = {
             'quick': [
-                # Fast scan - only most critical
+                # Fast scan - only most critical/common
                 'sqli', 'xss', 'headers', 'cors', 'ssl_tls'
             ],
             'standard': [
@@ -201,18 +242,10 @@ class EnhancedVulnerabilityScanner:
                 'sqli', 'nosqli', 'xss', 'cmdi', 'ssti',
                 'headers', 'cors', 'idor', 'path_traversal',
                 'ssrf', 'ssl_tls', 'jwt', 'rate_limiting',
-                'information_disclosure', 'cookie_security'
+                'information_disclosure', 'cookie_security',
+                'error_handling'  # NEW
             ],
-            'owasp': [
-                # Complete OWASP Top 10 2021 coverage
-                'sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi', 'ssti', 'ldapi', 'xpath', 'xxe',
-                'idor', 'path_traversal', 'forced_browsing', 'privilege_escalation', 'jwt',
-                'ssl_tls', 'weak_crypto', 'sensitive_data_exposure',
-                'headers', 'cors', 'debug', 'cookie_security', 'information_disclosure',
-                'rate_limiting', 'deserialization', 'ssrf', 'graphql',
-                'brute_force', 'session_fixation', 'weak_password'
-            ],
-            'full': list(self.all_scanners.keys()),  # ALL 30+ scanners
+            'full': list(self.all_scanners.keys()),  # ALL 35+ scanners
         }
         
         # Select active scanners
@@ -231,8 +264,41 @@ class EnhancedVulnerabilityScanner:
             'ai_enhanced_findings': 0,
             'false_positives_filtered': 0,
             'smart_payloads_used': 0,
-            'total_ai_calls': 0
+            'total_ai_calls': 0,
+            'owasp_coverage': self._calculate_owasp_coverage()
         }
+    
+    def _calculate_owasp_coverage(self) -> Dict:
+        """Calculate OWASP 2025 category coverage"""
+        owasp_mapping = {
+            'A01': ['idor', 'path_traversal', 'forced_browsing', 'privilege_escalation', 'jwt', 'ssrf'],
+            'A02': ['headers', 'cors', 'debug', 'backup', 'ssl_tls', 'cookie_security', 'information_disclosure'],
+            'A03': ['known_cve', 'dependency_check', 'integrity_check', 'outdated_components'],
+            'A04': ['weak_crypto', 'sensitive_data_exposure'],
+            'A05': ['sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi', 'ssti', 'ldapi', 'xpath', 'hhi', 'xxe'],
+            'A06': ['rate_limiting', 'brute_force'],
+            'A07': ['session_fixation', 'weak_password', 'jwt'],
+            'A08': ['deserialization', 'integrity_check'],
+            'A09': [],  # Limited black-box testing
+            'A10': ['error_handling', 'fail_open', 'resource_limits'],
+        }
+        
+        coverage = {}
+        active_names = set(self.active_scanners.keys())
+        
+        for category, scanners in owasp_mapping.items():
+            if not scanners:
+                coverage[category] = {'covered': 0, 'total': 0, 'percentage': 0}
+            else:
+                covered = len(set(scanners) & active_names)
+                total = len(scanners)
+                coverage[category] = {
+                    'covered': covered,
+                    'total': total,
+                    'percentage': round((covered / total) * 100) if total > 0 else 0
+                }
+        
+        return coverage
     
     def _select_scanners(self) -> Dict:
         """Select scanners based on configuration"""
@@ -276,10 +342,14 @@ class EnhancedVulnerabilityScanner:
         """
         print(f"\n{'='*60}")
         print(f"  Enhanced VulnFlow Scanner (AI: {self.ai_analyzer.mode.value})")
+        print(f"  OWASP Version: Top 10 2025")
         print(f"  Active Scanners: {len(self.active_scanners)}")
         print(f"  Total Available: {len(self.all_scanners)}")
         print(f"  Parallel Workers: {self.max_concurrent_scanners}")
         print(f"{'='*60}\n")
+        
+        # Print OWASP coverage
+        self._print_owasp_coverage()
         
         start_time = time.time()
         
@@ -348,7 +418,7 @@ class EnhancedVulnerabilityScanner:
             connector=connector,
             timeout=timeout,
             headers={
-                'User-Agent': 'VulnFlow/2.0 AI-Enhanced Security Scanner',
+                'User-Agent': 'VulnFlow/2.0 AI-Enhanced Security Scanner (OWASP 2025)',
                 'Accept': '*/*'
             }
         ) as session:
@@ -394,14 +464,79 @@ class EnhancedVulnerabilityScanner:
         print(f"  Validated Vulnerabilities: {len(unique_vulns)}")
         print(f"  AI Enhanced: {self.metrics['ai_enhanced_findings']}")
         print(f"  False Positives Filtered: {self.metrics['false_positives_filtered']}")
+        self._print_findings_by_owasp(unique_vulns)
         print(f"{'='*60}\n")
         
         return unique_vulns
     
+    def _print_owasp_coverage(self):
+        """Print OWASP 2025 coverage summary"""
+        print("[*] OWASP 2025 Coverage:")
+        coverage = self._calculate_owasp_coverage()
+        
+        owasp_names = {
+            'A01': 'Broken Access Control',
+            'A02': 'Security Misconfiguration',
+            'A03': 'Supply Chain Failures',
+            'A04': 'Cryptographic Failures',
+            'A05': 'Injection',
+            'A06': 'Insecure Design',
+            'A07': 'Auth Failures',
+            'A08': 'Data Integrity',
+            'A09': 'Logging Failures',
+            'A10': 'Exceptional Conditions',
+        }
+        
+        for cat_id, data in coverage.items():
+            name = owasp_names.get(cat_id, cat_id)
+            pct = data['percentage']
+            bar = '█' * (pct // 10) + '░' * (10 - pct // 10)
+            status = '✓' if pct >= 50 else '○'
+            print(f"  {status} {cat_id}: {name[:22]:<22} [{bar}] {pct:>3}%")
+        print()
+    
+    def _print_findings_by_owasp(self, vulnerabilities: List[Vulnerability]):
+        """Print findings summary grouped by OWASP category"""
+        if not vulnerabilities:
+            return
+        
+        print(f"\n  Findings by OWASP 2025 Category:")
+        
+        # Group by OWASP category
+        by_category = {}
+        for vuln in vulnerabilities:
+            owasp_cat = getattr(vuln, 'owasp_category', None)
+            if owasp_cat:
+                cat_value = owasp_cat.value if hasattr(owasp_cat, 'value') else str(owasp_cat)
+            else:
+                cat_value = "Other"
+            
+            # Extract category ID (e.g., "A01" from "A01:2025 - Broken Access Control")
+            if ':' in cat_value:
+                cat_id = cat_value.split(':')[0]
+            else:
+                cat_id = "Other"
+            
+            if cat_id not in by_category:
+                by_category[cat_id] = {'critical': 0, 'high': 0, 'medium': 0, 'low': 0, 'info': 0}
+            
+            severity = vuln.severity.value if hasattr(vuln.severity, 'value') else str(vuln.severity)
+            if severity in by_category[cat_id]:
+                by_category[cat_id][severity] += 1
+        
+        for cat_id in sorted(by_category.keys()):
+            counts = by_category[cat_id]
+            total = sum(counts.values())
+            parts = []
+            if counts['critical']: parts.append(f"🔴{counts['critical']}")
+            if counts['high']: parts.append(f"🟠{counts['high']}")
+            if counts['medium']: parts.append(f"🟡{counts['medium']}")
+            if counts['low']: parts.append(f"🔵{counts['low']}")
+            
+            print(f"    {cat_id}: {total} findings ({' '.join(parts)})")
+    
     async def _detect_tech_stack(self, crawl_results: Dict) -> List[str]:
-        """
-        Auto-detect technology stack from crawl results
-        """
+        """Auto-detect technology stack from crawl results"""
         tech_stack = []
         
         # Get first URL to test
@@ -501,9 +636,7 @@ class EnhancedVulnerabilityScanner:
         session: aiohttp.ClientSession,
         tech_stack: List[str]
     ) -> List[Vulnerability]:
-        """
-        Validate vulnerabilities using AI analysis to reduce false positives.
-        """
+        """Validate vulnerabilities using AI analysis to reduce false positives."""
         if not vulnerabilities:
             return []
         
@@ -547,9 +680,17 @@ class EnhancedVulnerabilityScanner:
         tech_stack: List[str]
     ) -> AIAnalysisResult:
         """Analyze a single vulnerability with AI"""
+        # Get OWASP category for context
+        owasp_cat = getattr(vuln, 'owasp_category', None)
+        if owasp_cat:
+            owasp_value = owasp_cat.value if hasattr(owasp_cat, 'value') else str(owasp_cat)
+        else:
+            owasp_value = "Unknown"
+        
         context = {
             'tech_stack': tech_stack,
-            'severity': vuln.severity.value if hasattr(vuln.severity, 'value') else str(vuln.severity)
+            'severity': vuln.severity.value if hasattr(vuln.severity, 'value') else str(vuln.severity),
+            'owasp_category': owasp_value
         }
         
         return await self.ai_analyzer.analyze_vulnerability(
@@ -591,6 +732,9 @@ class EnhancedVulnerabilityScanner:
         enhanced_description += f"Exploitation Complexity: {ai_result.exploitation_complexity.title()}\n"
         enhanced_description += f"Business Impact: {ai_result.business_impact}"
         
+        # Preserve OWASP category
+        owasp_cat = getattr(vuln, 'owasp_category', OWASPCategory.OTHER)
+        
         return Vulnerability(
             vuln_type=vuln.vuln_type,
             severity=new_severity,
@@ -600,6 +744,7 @@ class EnhancedVulnerabilityScanner:
             evidence=vuln.evidence,
             description=enhanced_description,
             cwe_id=vuln.cwe_id,
+            owasp_category=owasp_cat,
             remediation=vuln.remediation
         )
     
@@ -679,11 +824,21 @@ class EnhancedVulnerabilityScanner:
         return ""
     
     def _get_active_site_scanners(self) -> Dict:
-        """Get scanners that scan entire sites"""
+        """Get scanners that scan entire sites (not parameter-specific)"""
         site_scanner_names = [
-            'headers', 'cors', 'ssl_tls', 'rate_limiting', 'graphql',
-            'debug', 'backup', 'cookie_security', 'information_disclosure',
-            'cve', 'weak_crypto', 'sensitive_data_exposure'
+            # A02 - Misconfiguration
+            'headers', 'cors', 'ssl_tls', 'debug', 'backup', 
+            'cookie_security', 'information_disclosure',
+            # A03 - Supply Chain
+            'known_cve', 'dependency_check', 'integrity_check', 'outdated_components',
+            # A04 - Crypto
+            'weak_crypto', 'sensitive_data_exposure',
+            # A06 - Insecure Design
+            'rate_limiting',
+            # A10 - Exceptional Conditions
+            'error_handling', 'fail_open', 'resource_limits',
+            # API
+            'graphql',
         ]
         return {k: v for k, v in self.active_scanners.items() 
                 if k in site_scanner_names}
@@ -691,9 +846,13 @@ class EnhancedVulnerabilityScanner:
     def _get_active_param_scanners(self) -> Dict:
         """Get scanners that test parameters"""
         site_scanner_names = [
-            'headers', 'cors', 'ssl_tls', 'rate_limiting', 'graphql',
-            'debug', 'backup', 'cookie_security', 'information_disclosure',
-            'cve', 'weak_crypto', 'sensitive_data_exposure'
+            'headers', 'cors', 'ssl_tls', 'debug', 'backup', 
+            'cookie_security', 'information_disclosure',
+            'known_cve', 'dependency_check', 'integrity_check', 'outdated_components',
+            'weak_crypto', 'sensitive_data_exposure',
+            'rate_limiting',
+            'error_handling', 'fail_open', 'resource_limits',
+            'graphql',
         ]
         return {k: v for k, v in self.active_scanners.items() 
                 if k not in site_scanner_names}
@@ -721,7 +880,52 @@ class EnhancedVulnerabilityScanner:
         """Get performance and AI metrics"""
         return {
             **self.metrics,
-            'executor_stats': self.executor.stats if self.executor else {}
+            'executor_stats': self.executor.stats if self.executor else {},
+            'owasp_coverage': self._calculate_owasp_coverage()
+        }
+    
+    def get_available_scan_modes(self) -> Dict[str, List[str]]:
+        """Get all available scan modes and their scanners"""
+        return {
+            mode: scanners for mode, scanners in self.scan_modes.items()
+        }
+    
+    def get_owasp_mapping(self) -> Dict[str, List[str]]:
+        """Get mapping of OWASP 2025 categories to scanners"""
+        return {
+            'A01:2025 - Broken Access Control': [
+                'idor', 'path_traversal', 'forced_browsing', 
+                'privilege_escalation', 'jwt', 'ssrf'
+            ],
+            'A02:2025 - Security Misconfiguration': [
+                'headers', 'cors', 'debug', 'backup', 'ssl_tls',
+                'cookie_security', 'information_disclosure'
+            ],
+            'A03:2025 - Software Supply Chain Failures': [
+                'known_cve', 'dependency_check', 'integrity_check', 'outdated_components'
+            ],
+            'A04:2025 - Cryptographic Failures': [
+                'weak_crypto', 'sensitive_data_exposure'
+            ],
+            'A05:2025 - Injection': [
+                'sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi', 
+                'ssti', 'ldapi', 'xpath', 'hhi', 'xxe'
+            ],
+            'A06:2025 - Insecure Design': [
+                'rate_limiting', 'brute_force'
+            ],
+            'A07:2025 - Authentication Failures': [
+                'session_fixation', 'weak_password', 'jwt', 'brute_force'
+            ],
+            'A08:2025 - Software or Data Integrity Failures': [
+                'deserialization', 'integrity_check'
+            ],
+            'A09:2025 - Security Logging and Alerting Failures': [
+                # Limited black-box testing capability
+            ],
+            'A10:2025 - Mishandling of Exceptional Conditions': [
+                'error_handling', 'fail_open', 'resource_limits'
+            ],
         }
     
     def shutdown(self):

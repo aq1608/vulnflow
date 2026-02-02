@@ -13,7 +13,7 @@ class SSTIScanner(BaseScanner):
     
     name = "SSTI Scanner"
     description = "Detects Server-Side Template Injection vulnerabilities"
-    owasp_category = OWASPCategory.A03_INJECTION
+    owasp_category = OWASPCategory.A05_INJECTION
     
     # SSTI payloads with expected results
     PAYLOADS = [

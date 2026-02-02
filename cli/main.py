@@ -1,4 +1,4 @@
-# cli/main.py - MERGED: AI-INTEGRATED + FULL FEATURES
+# cli/main.py 
 """
 VulnFlow CLI with Full AI Integration + Rich Terminal Output + Complete Feature Set
 """
@@ -613,80 +613,6 @@ def display_results(results: dict, show_remediation: bool = False, show_stats: b
             console.print(tech_table)
             console.print()
         
-        # # Vulnerabilities table
-        # if vulns:
-        #     vuln_table = Table(title="🔴 Vulnerabilities Found")
-        #     vuln_table.add_column("#", style="dim", width=4)
-        #     vuln_table.add_column("Type", style="cyan")
-        #     vuln_table.add_column("Severity")
-        #     vuln_table.add_column("URL", max_width=40)
-        #     vuln_table.add_column("Parameter")
-        #     if ai_mode:
-        #         vuln_table.add_column("Confidence")
-            
-        #     for i, vuln in enumerate(vulns, 1):
-        #         sev = vuln.severity.value if hasattr(vuln.severity, 'value') else str(vuln.severity)
-        #         color = severity_colors.get(sev, "white")
-                
-        #         url_display = vuln.url[:40] + "..." if len(vuln.url) > 40 else vuln.url
-                
-        #         row = [
-        #             str(i),
-        #             vuln.vuln_type,
-        #             f"[{color}]{sev.upper()}[/{color}]",
-        #             url_display,
-        #             vuln.parameter or "N/A"
-        #         ]
-                
-        #         if ai_mode and hasattr(vuln, 'confidence'):
-        #             row.append(f"{vuln.confidence:.0%}" if vuln.confidence else "N/A")
-                
-        #         vuln_table.add_row(*row)
-            
-        #     console.print(vuln_table)
-            
-        #     # Detailed findings
-        #     console.print("\n[bold]📋 Detailed Findings:[/bold]\n")
-            
-        #     for i, vuln in enumerate(vulns, 1):
-        #         sev = vuln.severity.value if hasattr(vuln.severity, 'value') else str(vuln.severity)
-        #         color = severity_colors.get(sev, "white")
-                
-        #         console.print(f"[bold]#{i} {vuln.vuln_type}[/bold]")
-        #         console.print(f"   Severity: [{color}]{sev.upper()}[/{color}]")
-        #         console.print(f"   URL: {vuln.url}")
-        #         if vuln.parameter:
-        #             console.print(f"   Parameter: {vuln.parameter}")
-        #         if vuln.payload:
-        #             console.print(f"   Payload: {vuln.payload[:60]}...")
-        #         if hasattr(vuln, 'evidence') and vuln.evidence:
-        #             console.print(f"   Evidence: {vuln.evidence[:80]}...")
-        #         if hasattr(vuln, 'cwe_id') and vuln.cwe_id:
-        #             console.print(f"   CWE: {vuln.cwe_id}")
-        #         if hasattr(vuln, 'description') and vuln.description:
-        #             console.print(f"   Description: {vuln.description}")
-        #         if ai_mode and hasattr(vuln, 'confidence') and vuln.confidence:
-        #             console.print(f"   Confidence: {vuln.confidence:.0%}")
-                
-        #         # Show remediation if requested
-        #         if show_remediation:
-        #             if hasattr(vuln, 'remediation') and vuln.remediation:
-        #                 console.print(f"\n   [green]💡 Remediation:[/green] {vuln.remediation}")
-        #             elif vuln.vuln_type in results.get("remediations", {}):
-        #                 console.print(f"\n   [green]💡 Remediation:[/green]")
-        #                 for advice in results["remediations"][vuln.vuln_type]:
-        #                     if hasattr(advice, 'framework'):
-        #                         console.print(f"      Framework: {advice.framework}")
-        #                     if hasattr(advice, 'description'):
-        #                         console.print(f"      {advice.description}")
-                
-        #         console.print()
-        # else:
-        #     console.print(Panel(
-        #         "[green]✅ No vulnerabilities found![/green]\n\nGreat job! The scan did not detect any security issues.",
-        #         title="Results",
-        #         border_style="green"
-        #     ))
     else:
         # Fallback without rich
         print("\n" + "="*60)

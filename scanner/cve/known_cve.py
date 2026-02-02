@@ -25,7 +25,7 @@ class KnownCVEScanner(BaseScanner):
     
     name="Known CVE Scanner",
     description="Detects known vulnerabilities in components",
-    owasp_category=OWASPCategory.A06_VULNERABLE_COMPONENTS
+    owasp_category=OWASPCategory.A03_SUPPLY_CHAIN_FAILURES
 
     def __init__(self):
         

@@ -13,7 +13,7 @@ class SecurityHeadersScanner(BaseScanner):
     
     name = "Security Headers Scanner"
     description = "Checks for missing or misconfigured HTTP security headers"
-    owasp_category = OWASPCategory.A05_SECURITY_MISCONFIGURATION
+    owasp_category = OWASPCategory.A02_SECURITY_MISCONFIGURATION
     
     # Security headers to check
     SECURITY_HEADERS = {

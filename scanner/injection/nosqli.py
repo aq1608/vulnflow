@@ -14,7 +14,7 @@ class NoSQLInjectionScanner(BaseScanner):
     
     name = "NoSQL Injection Scanner"
     description = "Detects NoSQL injection vulnerabilities"
-    owasp_category = OWASPCategory.A03_INJECTION
+    owasp_category = OWASPCategory.A05_INJECTION
     
     # MongoDB injection payloads
     MONGO_PAYLOADS = [

@@ -25,7 +25,7 @@ class XPathInjectionScanner(BaseScanner):
 
     name="XPath Injection Scanner",
     description="Detects XPath injection vulnerabilities",
-    owasp_category=OWASPCategory.A03_INJECTION
+    owasp_category=OWASPCategory.A05_INJECTION
     
     def __init__(self):
         

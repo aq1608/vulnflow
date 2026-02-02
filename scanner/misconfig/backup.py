@@ -13,7 +13,7 @@ class BackupFileScanner(BaseScanner):
     
     name = "Backup File Scanner"
     description = "Detects exposed backup, temporary, and old files"
-    owasp_category = OWASPCategory.A05_SECURITY_MISCONFIGURATION
+    owasp_category = OWASPCategory.A02_SECURITY_MISCONFIGURATION
     
     # Common backup extensions
     BACKUP_EXTENSIONS = [

@@ -1,4 +1,4 @@
-# scanner/ssrf/ssrf.py
+# scanner/access_control/ssrf.py
 """Server-Side Request Forgery (SSRF) Scanner"""
 
 import re
@@ -14,7 +14,7 @@ class SSRFScanner(BaseScanner):
     
     name = "SSRF Scanner"
     description = "Detects Server-Side Request Forgery vulnerabilities"
-    owasp_category = OWASPCategory.A10_SSRF
+    owasp_category = OWASPCategory.A01_BROKEN_ACCESS_CONTROL
     
     # URL parameter patterns that might be vulnerable
     URL_PARAM_PATTERNS = [
@@ -73,7 +73,6 @@ class SSRFScanner(BaseScanner):
         # File protocol
         ('file:///etc/passwd', 'file_protocol'),
         ('file:///c:/windows/win.ini', 'file_protocol'),
-        
         # Other protocols
         ('dict://127.0.0.1:6379/info', 'dict_protocol'),
         ('gopher://127.0.0.1:6379/_INFO', 'gopher_protocol'),

@@ -14,7 +14,7 @@ class CommandInjectionScanner(BaseScanner):
     
     name = "Command Injection Scanner"
     description = "Detects OS command injection vulnerabilities"
-    owasp_category = OWASPCategory.A03_INJECTION
+    owasp_category = OWASPCategory.A05_INJECTION
     
     # Command injection payloads
     PAYLOADS = [

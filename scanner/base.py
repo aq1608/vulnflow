@@ -19,19 +19,57 @@ class Severity(Enum):
 
 
 class OWASPCategory(Enum):
-    """OWASP Top 10 2021 Categories"""
-    A01_BROKEN_ACCESS_CONTROL = "A01:2021 - Broken Access Control"
-    A02_CRYPTOGRAPHIC_FAILURES = "A02:2021 - Cryptographic Failures"
-    A03_INJECTION = "A03:2021 - Injection"
-    A04_INSECURE_DESIGN = "A04:2021 - Insecure Design"
-    A05_SECURITY_MISCONFIGURATION = "A05:2021 - Security Misconfiguration"
-    A06_VULNERABLE_COMPONENTS = "A06:2021 - Vulnerable and Outdated Components"
-    A07_AUTH_FAILURES = "A07:2021 - Identification and Authentication Failures"
-    A08_DATA_INTEGRITY_FAILURES = "A08:2021 - Software and Data Integrity Failures"
-    A09_LOGGING_FAILURES = "A09:2021 - Security Logging and Monitoring Failures"
-    A10_SSRF = "A10:2021 - Server-Side Request Forgery"
+    """OWASP Top 10 2025 Categories"""
+    # A01:2025 - Broken Access Control (now includes SSRF)
+    A01_BROKEN_ACCESS_CONTROL = "A01:2025 - Broken Access Control"
+    
+    # A02:2025 - Security Misconfiguration (moved up from #5)
+    A02_SECURITY_MISCONFIGURATION = "A02:2025 - Security Misconfiguration"
+    
+    # A03:2025 - Software Supply Chain Failures (renamed/expanded from Vulnerable Components)
+    A03_SUPPLY_CHAIN_FAILURES = "A03:2025 - Software Supply Chain Failures"
+    
+    # A04:2025 - Cryptographic Failures (moved down from #2)
+    A04_CRYPTOGRAPHIC_FAILURES = "A04:2025 - Cryptographic Failures"
+    
+    # A05:2025 - Injection (moved down from #3)
+    A05_INJECTION = "A05:2025 - Injection"
+    
+    # A06:2025 - Insecure Design
+    A06_INSECURE_DESIGN = "A06:2025 - Insecure Design"
+    
+    # A07:2025 - Authentication Failures
+    A07_AUTH_FAILURES = "A07:2025 - Authentication Failures"
+    
+    # A08:2025 - Software or Data Integrity Failures
+    A08_DATA_INTEGRITY_FAILURES = "A08:2025 - Software or Data Integrity Failures"
+    
+    # A09:2025 - Security Logging and Alerting Failures (renamed to emphasize alerting)
+    A09_LOGGING_ALERTING_FAILURES = "A09:2025 - Security Logging and Alerting Failures"
+    
+    # A10:2025 - Mishandling of Exceptional Conditions (NEW - replaces SSRF)
+    A10_EXCEPTIONAL_CONDITIONS = "A10:2025 - Mishandling of Exceptional Conditions"
+    
     OTHER = "Other"
-
+    
+    # === LEGACY ALIASES (for backward compatibility) ===
+    # These map old 2021 categories to new 2025 equivalents
+    @classmethod
+    def from_legacy(cls, legacy_value: str) -> 'OWASPCategory':
+        """Convert OWASP 2021 category strings to 2025 equivalents"""
+        legacy_mapping = {
+            "A01:2021 - Broken Access Control": cls.A01_BROKEN_ACCESS_CONTROL,
+            "A02:2021 - Cryptographic Failures": cls.A04_CRYPTOGRAPHIC_FAILURES,
+            "A03:2021 - Injection": cls.A05_INJECTION,
+            "A04:2021 - Insecure Design": cls.A06_INSECURE_DESIGN,
+            "A05:2021 - Security Misconfiguration": cls.A02_SECURITY_MISCONFIGURATION,
+            "A06:2021 - Vulnerable and Outdated Components": cls.A03_SUPPLY_CHAIN_FAILURES,
+            "A07:2021 - Identification and Authentication Failures": cls.A07_AUTH_FAILURES,
+            "A08:2021 - Software and Data Integrity Failures": cls.A08_DATA_INTEGRITY_FAILURES,
+            "A09:2021 - Security Logging and Monitoring Failures": cls.A09_LOGGING_ALERTING_FAILURES,
+            "A10:2021 - Server-Side Request Forgery": cls.A01_BROKEN_ACCESS_CONTROL,  # SSRF merged into A01
+        }
+        return legacy_mapping.get(legacy_value, cls.OTHER)
 
 @dataclass
 class Vulnerability:

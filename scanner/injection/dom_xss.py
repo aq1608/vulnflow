@@ -1,4 +1,4 @@
-# scanner/xss/dom_xss.py
+# scanner/injection/dom_xss.py
 """
 DOM-based XSS Scanner
 
@@ -25,7 +25,7 @@ class DOMXSSScanner(BaseScanner):
 
     name="DOM-based XSS Scanner",
     description="Detects DOM-based Cross-Site Scripting vulnerabilities",
-    owasp_category=OWASPCategory.A03_INJECTION
+    owasp_category=OWASPCategory.A05_INJECTION
     
     def __init__(self):
 

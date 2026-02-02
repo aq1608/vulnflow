@@ -28,7 +28,7 @@ class SensitiveDataExposureScanner(BaseScanner):
     
     name="Sensitive Data Exposure Scanner",
     description="Detects exposure of sensitive data in responses",
-    owasp_category=OWASPCategory.A02_CRYPTOGRAPHIC_FAILURES
+    owasp_category=OWASPCategory.A04_CRYPTOGRAPHIC_FAILURES
 
     def __init__(self):
         

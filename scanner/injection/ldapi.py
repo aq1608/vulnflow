@@ -25,7 +25,7 @@ class LDAPInjectionScanner(BaseScanner):
     
     name="LDAP Injection Scanner",
     description="Detects LDAP injection vulnerabilities",
-    owasp_category=OWASPCategory.A03_INJECTION
+    owasp_category=OWASPCategory.A05_INJECTION
 
     def __init__(self):
         

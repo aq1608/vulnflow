@@ -24,9 +24,9 @@ from ..base import BaseScanner, Vulnerability, Severity, OWASPCategory
 class XXEScanner(BaseScanner):
     """Scanner for XML External Entity (XXE) injection vulnerabilities"""
 
-    name="XXE Scanner",
-    description="Detects XML External Entity injection vulnerabilities",
-    owasp_category=OWASPCategory.A05_SECURITY_MISCONFIGURATION
+    name="XXE Scanner"
+    description="Detects XML External Entity injection vulnerabilities"
+    owasp_category=OWASPCategory.A02_SECURITY_MISCONFIGURATION
     
     def __init__(self):
         # XXE payloads for different attack types

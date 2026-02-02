@@ -27,7 +27,7 @@ class WeakCryptoScanner(BaseScanner):
     
     name="Weak Cryptography Scanner",
     description="Detects weak cryptographic implementations",
-    owasp_category=OWASPCategory.A02_CRYPTOGRAPHIC_FAILURES
+    owasp_category=OWASPCategory.A04_CRYPTOGRAPHIC_FAILURES
 
     def __init__(self):
         
@@ -107,6 +107,71 @@ class WeakCryptoScanner(BaseScanner):
             },
         }
         
+        # ADD: Weak key size patterns (CWE-326)
+        self.weak_key_size_patterns = {
+            "rsa_512": {
+                "pattern": r"(?:RSA|rsa).*?512\s*(?:bit|bits)?",
+                "description": "RSA-512 is easily breakable",
+                "severity": Severity.CRITICAL,
+                "cwe": "CWE-326"
+            },
+            "rsa_1024": {
+                "pattern": r"(?:RSA|rsa).*?1024\s*(?:bit|bits)?",
+                "description": "RSA-1024 is deprecated",
+                "severity": Severity.HIGH,
+                "cwe": "CWE-326"
+            },
+            "dh_1024": {
+                "pattern": r"(?:DH|Diffie).*?1024\s*(?:bit|bits)?",
+                "description": "DH-1024 is weak",
+                "severity": Severity.HIGH,
+                "cwe": "CWE-326"
+            },
+        }
+        
+        # ADD: Unsalted hash patterns (CWE-759)
+        self.unsalted_hash_patterns = {
+            "direct_md5_password": {
+                "pattern": r"md5\s*\(\s*\$?(?:password|passwd|pwd)",
+                "description": "Direct MD5 of password (no salt)",
+                "severity": Severity.HIGH,
+                "cwe": "CWE-759"
+            },
+            "direct_sha_password": {
+                "pattern": r"sha(?:1|256)\s*\(\s*\$?(?:password|passwd|pwd)",
+                "description": "Direct SHA of password (no salt)",
+                "severity": Severity.MEDIUM,
+                "cwe": "CWE-759"
+            },
+        }
+        
+        # ADD: Additional PRNG patterns (CWE-338)
+        self.additional_prng_patterns = {
+            "python_random": {
+                "pattern": r"random\.(?:random|randint|choice)\s*\(",
+                "description": "Python random module is not cryptographically secure",
+                "severity": Severity.MEDIUM,
+                "cwe": "CWE-338"
+            },
+            "php_rand": {
+                "pattern": r"\b(?:rand|mt_rand)\s*\(",
+                "description": "PHP rand/mt_rand is not cryptographically secure",
+                "severity": Severity.HIGH,
+                "cwe": "CWE-338"
+            },
+            "java_random": {
+                "pattern": r"new\s+Random\s*\(",
+                "description": "java.util.Random is not cryptographically secure",
+                "severity": Severity.HIGH,
+                "cwe": "CWE-338"
+            },
+            "csharp_random": {
+                "pattern": r"new\s+System\.Random\s*\(",
+                "description": "System.Random is not cryptographically secure",
+                "severity": Severity.HIGH,
+                "cwe": "CWE-338"
+            },
+        }
         # Common weak/test encryption keys
         self.weak_keys = [
             "0000000000000000",
@@ -143,6 +208,14 @@ class WeakCryptoScanner(BaseScanner):
         # Check response headers for crypto-related issues
         header_vulns = await self._check_headers(session, url)
         vulnerabilities.extend(header_vulns)
+
+        # NEW: Check for weak key sizes
+        key_vulns = await self._check_weak_key_sizes(session, url)
+        vulnerabilities.extend(key_vulns)
+        
+        # NEW: Check for unsalted hashes
+        salt_vulns = await self._check_unsalted_hashes(session, url)
+        vulnerabilities.extend(salt_vulns)
         
         # Deduplicate
         seen = set()
@@ -154,6 +227,99 @@ class WeakCryptoScanner(BaseScanner):
                 unique_vulns.append(vuln)
         
         return unique_vulns
+    
+    async def _check_weak_key_sizes(
+        self,
+        session: aiohttp.ClientSession,
+        url: str
+    ) -> List[Vulnerability]:
+        """Check for weak cryptographic key sizes"""
+        vulnerabilities = []
+        
+        try:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15), ssl=False) as response:
+                if response.status == 200:
+                    content = await response.text()
+                    
+                    for pattern_name, config in self.weak_key_size_patterns.items():
+                        if re.search(config["pattern"], content, re.IGNORECASE):
+                            vulnerabilities.append(Vulnerability(
+                                vuln_type=f"Weak Key Size - {config['description']}",
+                                severity=config["severity"],
+                                url=url,
+                                parameter="content",
+                                payload="N/A",
+                                evidence=config["description"],
+                                description=f"Weak cryptographic key size detected: {config['description']}",
+                                cwe_id=config["cwe"],
+                                owasp_category=self.owasp_category,
+                                remediation=self._get_key_size_remediation()
+                            ))
+        except Exception:
+            pass
+        
+        return vulnerabilities
+    
+    async def _check_unsalted_hashes(
+        self,
+        session: aiohttp.ClientSession,
+        url: str
+    ) -> List[Vulnerability]:
+        """Check for unsalted password hashes"""
+        vulnerabilities = []
+        
+        try:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15), ssl=False) as response:
+                if response.status == 200:
+                    content = await response.text()
+                    
+                    for pattern_name, config in self.unsalted_hash_patterns.items():
+                        if re.search(config["pattern"], content, re.IGNORECASE):
+                            vulnerabilities.append(Vulnerability(
+                                vuln_type=f"Unsalted Hash - {config['description']}",
+                                severity=config["severity"],
+                                url=url,
+                                parameter="content",
+                                payload="N/A",
+                                evidence=config["description"],
+                                description="Password hashing without salt is vulnerable to rainbow table attacks",
+                                cwe_id=config["cwe"],
+                                owasp_category=self.owasp_category,
+                                remediation=self._get_salt_remediation()
+                            ))
+        except Exception:
+            pass
+        
+        return vulnerabilities
+    
+    def _get_key_size_remediation(self) -> str:
+        return """
+Use adequate key sizes:
+- RSA: Minimum 2048 bits (3072 or 4096 recommended)
+- ECDSA: Minimum 256 bits (P-256 or higher)
+- AES: 256 bits for sensitive data
+- DH: Minimum 2048 bits
+
+For future-proofing, consider post-quantum algorithms.
+"""
+    
+    def _get_salt_remediation(self) -> str:
+        return """
+Never hash passwords without salt:
+
+Use dedicated password hashing functions:
+- Argon2id (recommended)
+- bcrypt (cost factor >= 10)
+- scrypt
+- PBKDF2 (>= 310,000 iterations with SHA-256)
+
+Example (Python):
+```python
+from argon2 import PasswordHasher
+ph = PasswordHasher()
+hash = ph.hash(password)
+These functions handle salting automatically.
+"""
     
     async def _scan_url(
         self,

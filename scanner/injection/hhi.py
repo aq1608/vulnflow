@@ -27,7 +27,7 @@ class HostHeaderInjectionScanner(BaseScanner):
     
     name="Host Header Injection Scanner",
     description="Detects Host Header Injection vulnerabilities",
-    owasp_category=OWASPCategory.A03_INJECTION
+    owasp_category=OWASPCategory.A05_INJECTION
 
     def __init__(self):
         # Evil host values to test

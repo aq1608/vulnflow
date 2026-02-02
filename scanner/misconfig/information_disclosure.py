@@ -29,7 +29,7 @@ class InformationDisclosureScanner(BaseScanner):
 
     name="Information Disclosure Scanner",
     description="Detects information disclosure vulnerabilities",
-    owasp_category=OWASPCategory.A05_SECURITY_MISCONFIGURATION
+    owasp_category=OWASPCategory.A02_SECURITY_MISCONFIGURATION
     
     def __init__(self):
         

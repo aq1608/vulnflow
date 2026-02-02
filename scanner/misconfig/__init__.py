@@ -6,6 +6,8 @@ from .backup import BackupFileScanner
 from .cookie_security import CookieSecurityScanner
 from .information_disclosure import InformationDisclosureScanner
 from .ssl_tls import SSLTLSScanner
+from .config_exposure import ConfigExposureScanner
+from .default_credentials import DefaultCredentialsScanner
 
 __all__ = [
     'SecurityHeadersScanner',
@@ -15,5 +17,7 @@ __all__ = [
     'BackupFileScanner',
     'CookieSecurityScanner',
     'InformationDisclosureScanner',
-    'SSLTLSScanner'
+    'SSLTLSScanner',
+    'ConfigExposureScanner',
+    'DefaultCredentialsScanner',
 ]

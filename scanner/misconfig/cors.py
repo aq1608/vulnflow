@@ -12,7 +12,7 @@ class CORSScanner(BaseScanner):
     
     name = "CORS Scanner"
     description = "Detects Cross-Origin Resource Sharing misconfigurations"
-    owasp_category = OWASPCategory.A05_SECURITY_MISCONFIGURATION
+    owasp_category = OWASPCategory.A01_BROKEN_ACCESS_CONTROL
     
     # Malicious origins to test
     TEST_ORIGINS = [

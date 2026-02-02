@@ -15,7 +15,7 @@ class XSSScanner(BaseScanner):
     
     name = "XSS Scanner"
     description = "Detects reflected, stored, and DOM-based XSS vulnerabilities"
-    owasp_category = OWASPCategory.A03_INJECTION
+    owasp_category = OWASPCategory.A05_INJECTION
     
     # Unique identifier for reflection detection
     XSS_CANARY = "VuLnFlOw"

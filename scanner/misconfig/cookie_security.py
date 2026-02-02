@@ -28,7 +28,7 @@ class CookieSecurityScanner(BaseScanner):
 
     name="Cookie Security Scanner",
     description="Detects insecure cookie configurations",
-    owasp_category=OWASPCategory.A05_SECURITY_MISCONFIGURATION
+    owasp_category=OWASPCategory.A02_SECURITY_MISCONFIGURATION
     
     def __init__(self):
         

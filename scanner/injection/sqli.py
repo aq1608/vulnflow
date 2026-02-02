@@ -1,5 +1,18 @@
 # scanner/injection/sqli.py
-"""SQL Injection Scanner"""
+"""
+SQL Injection Scanner
+
+Detects SQL injection vulnerabilities including:
+- Error-based SQL injection
+- Boolean-based blind SQL injection  
+- Time-based blind SQL injection
+- UNION-based SQL injection
+- ORM Injection (Hibernate HQL, JPA JPQL)
+
+OWASP: A05:2025 - Injection
+CWE-89: SQL Injection
+CWE-564: SQL Injection: Hibernate
+"""
 
 import re
 import asyncio
@@ -13,8 +26,8 @@ class SQLInjectionScanner(BaseScanner):
     """Comprehensive SQL Injection vulnerability scanner"""
     
     name = "SQL Injection Scanner"
-    description = "Detects SQL injection vulnerabilities including error-based, blind, and time-based techniques"
-    owasp_category = OWASPCategory.A03_INJECTION
+    description = "Detects SQL injection vulnerabilities including error-based, blind, time-based, and ORM injection"
+    owasp_category = OWASPCategory.A05_INJECTION
     
     # SQL Injection payloads organized by technique
     ERROR_BASED_PAYLOADS = [
@@ -53,6 +66,47 @@ class SQLInjectionScanner(BaseScanner):
         ("' AND 1=CTXSYS.DRITHSX.SN(1,(SELECT user FROM dual))--", "Oracle error"),
         ("' AND extractvalue(1,concat(0x7e,version()))--", "MySQL extractvalue"),
         ("' AND updatexml(1,concat(0x7e,version()),1)--", "MySQL updatexml"),
+    ]
+    
+    # === NEW: ORM/Hibernate Injection Payloads (CWE-564) ===
+    ORM_INJECTION_PAYLOADS = [
+        # Hibernate HQL Injection
+        ("' OR '1'='1", "HQL string injection"),
+        ("' OR 1=1--", "HQL boolean injection"),
+        ("') OR ('1'='1", "HQL parenthesis injection"),
+        ("' OR ''='", "HQL empty string"),
+        
+        # HQL-specific syntax
+        ("' AND 1=1 AND ''='", "HQL AND injection"),
+        ("admin' OR '1'='1' --", "HQL auth bypass"),
+        ("' OR custID IS NOT NULL OR custID='", "HQL IS NOT NULL bypass"),
+        
+        # JPA JPQL Injection
+        ("1 OR 1=1", "JPQL numeric injection"),
+        ("' OR 'x'='x", "JPQL string injection"),
+        
+        # Hibernate named parameters bypass attempts
+        (":param' OR '1'='1", "Named parameter injection"),
+        ("?1' OR '1'='1", "Positional parameter injection"),
+        
+        # HQL function exploitation
+        ("' AND SUBSTRING(username,1,1)='a' AND ''='", "HQL SUBSTRING"),
+        ("' AND LENGTH(password)>0 AND ''='", "HQL LENGTH"),
+        
+        # Entity traversal in HQL
+        ("' OR user.password IS NOT NULL OR ''='", "HQL entity traversal"),
+        ("' OR object.property LIKE '%' OR ''='", "HQL LIKE wildcard"),
+        
+        # JPA Criteria API bypass (reflected in logs/errors)
+        ("' OR 1=1 OR '1'='1", "Criteria API injection"),
+        
+        # MyBatis injection
+        ("${id}' OR '1'='1", "MyBatis $ injection"),
+        ("#{id}' OR '1'='1", "MyBatis # injection"),
+        
+        # Entity Framework (C#/.NET)
+        ("'; DELETE FROM Users--", "EF stacked query"),
+        ("' + '", "EF concatenation"),
     ]
     
     BOOLEAN_BASED_PAYLOADS = [
@@ -169,6 +223,38 @@ class SQLInjectionScanner(BaseScanner):
             r"org\.sqlite\.JDBC",
             r"SQLiteException",
         ],
+        # === NEW: ORM-specific errors ===
+        'hibernate': [
+            r"org\.hibernate\.QueryException",
+            r"org\.hibernate\.hql\.internal",
+            r"HQL.*error",
+            r"HibernateException",
+            r"org\.hibernate\.exception",
+            r"QuerySyntaxException",
+            r"unexpected token",
+            r"Invalid HQL",
+            r"org\.hibernate\.query",
+        ],
+        'jpa': [
+            r"javax\.persistence\.PersistenceException",
+            r"javax\.persistence\.QueryException",
+            r"EclipseLink.*Exception",
+            r"org\.eclipse\.persistence",
+            r"JPQL.*syntax",
+            r"Invalid JPQL",
+        ],
+        'mybatis': [
+            r"org\.apache\.ibatis",
+            r"MyBatisSystemException",
+            r"SqlMapClient",
+            r"iBATIS",
+        ],
+        'entity_framework': [
+            r"System\.Data\.Entity",
+            r"EntityCommandExecutionException",
+            r"EntitySqlException",
+            r"LINQ.*Exception",
+        ],
         'generic': [
             r"SQL syntax",
             r"SQL error",
@@ -217,7 +303,15 @@ class SQLInjectionScanner(BaseScanner):
                 vulnerabilities.append(error_vuln)
                 continue  # Found vuln, skip other tests for this param
             
-            # 2. Boolean-based blind detection
+            # 2. ORM Injection detection (NEW)
+            orm_vuln = await self._test_orm_injection(
+                session, url, params, param_name
+            )
+            if orm_vuln:
+                vulnerabilities.append(orm_vuln)
+                continue
+            
+            # 3. Boolean-based blind detection
             boolean_vuln = await self._test_boolean_based(
                 session, url, params, param_name,
                 baseline_status, baseline_body, baseline_length
@@ -226,7 +320,7 @@ class SQLInjectionScanner(BaseScanner):
                 vulnerabilities.append(boolean_vuln)
                 continue
             
-            # 3. Time-based blind detection
+            # 4. Time-based blind detection
             time_vuln = await self._test_time_based(
                 session, url, params, param_name
             )
@@ -234,6 +328,74 @@ class SQLInjectionScanner(BaseScanner):
                 vulnerabilities.append(time_vuln)
         
         return vulnerabilities
+    
+    async def _test_orm_injection(self, session: aiohttp.ClientSession,
+                                   url: str, params: Dict[str, str],
+                                   param_name: str) -> Optional[Vulnerability]:
+        """Test for ORM/Hibernate/JPA injection (CWE-564)"""
+        
+        for payload, description in self.ORM_INJECTION_PAYLOADS:
+            test_params = params.copy()
+            original_value = test_params.get(param_name, '')
+            test_params[param_name] = original_value + payload
+            
+            try:
+                response = await self.make_request(session, "GET", url, params=test_params)
+                if not response:
+                    continue
+                
+                body = await response.text()
+                
+                # Check for ORM-specific errors
+                for orm_type in ['hibernate', 'jpa', 'mybatis', 'entity_framework']:
+                    patterns = self.SQL_ERRORS.get(orm_type, [])
+                    for pattern in patterns:
+                        match = re.search(pattern, body, re.IGNORECASE)
+                        if match:
+                            return self.create_vulnerability(
+                                vuln_type="ORM Injection (Hibernate/JPA)",
+                                severity=Severity.CRITICAL,
+                                url=url,
+                                parameter=param_name,
+                                payload=payload,
+                                evidence=f"ORM: {orm_type.upper()}, Error: {match.group()[:150]}",
+                                description=f"ORM injection detected ({orm_type}). Even when using ORM frameworks like Hibernate, HQL/JPQL queries can be vulnerable if user input is concatenated into queries. Technique: {description}",
+                                cwe_id="CWE-564",
+                                cvss_score=9.8,
+                                remediation=self._get_orm_remediation(orm_type),
+                                references=[
+                                    "https://owasp.org/www-community/attacks/SQL_Injection",
+                                    "https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html",
+                                    "https://cwe.mitre.org/data/definitions/564.html"
+                                ]
+                            )
+                
+                # Also check if it falls through to regular SQL errors
+                for db_type, patterns in self.SQL_ERRORS.items():
+                    if db_type in ['hibernate', 'jpa', 'mybatis', 'entity_framework']:
+                        continue
+                    for pattern in patterns:
+                        match = re.search(pattern, body, re.IGNORECASE)
+                        if match:
+                            return self.create_vulnerability(
+                                vuln_type="SQL Injection via ORM",
+                                severity=Severity.CRITICAL,
+                                url=url,
+                                parameter=param_name,
+                                payload=payload,
+                                evidence=f"Database: {db_type.upper()}, Error: {match.group()[:150]}",
+                                description=f"SQL injection detected through ORM layer. The ORM is passing unsanitized input to the underlying database.",
+                                cwe_id="CWE-564",
+                                cvss_score=9.8,
+                                remediation=self._get_orm_remediation('generic'),
+                                references=[
+                                    "https://cwe.mitre.org/data/definitions/564.html"
+                                ]
+                            )
+            except Exception:
+                continue
+        
+        return None
     
     async def _test_error_based(self, session: aiohttp.ClientSession,
                                  url: str, params: Dict[str, str],
@@ -254,6 +416,8 @@ class SQLInjectionScanner(BaseScanner):
                 
                 # Check for SQL errors by database type
                 for db_type, patterns in self.SQL_ERRORS.items():
+                    if db_type in ['hibernate', 'jpa', 'mybatis', 'entity_framework']:
+                        continue  # Skip ORM patterns in this method
                     for pattern in patterns:
                         match = re.search(pattern, body, re.IGNORECASE)
                         if match:
@@ -288,7 +452,6 @@ class SQLInjectionScanner(BaseScanner):
         true_responses = []
         false_responses = []
         
-        # Collect responses for true and false conditions
         for payload, expected_true, description in self.BOOLEAN_BASED_PAYLOADS:
             test_params = params.copy()
             original_value = test_params.get(param_name, '')
@@ -324,18 +487,15 @@ class SQLInjectionScanner(BaseScanner):
         
         # Analyze responses
         if true_responses and false_responses:
-            # Check if true and false responses are consistently different
             true_lengths = [r['length'] for r in true_responses]
             false_lengths = [r['length'] for r in false_responses]
             
             avg_true_length = sum(true_lengths) / len(true_lengths) if true_lengths else 0
             avg_false_length = sum(false_lengths) / len(false_lengths) if false_lengths else 0
             
-            # Significant difference in response length
             length_diff = abs(avg_true_length - avg_false_length)
             
-            if length_diff > 50:  # More than 50 bytes difference
-                # Additional verification: true should be closer to baseline
+            if length_diff > 50:
                 true_diff_from_baseline = abs(avg_true_length - baseline_length)
                 false_diff_from_baseline = abs(avg_false_length - baseline_length)
                 
@@ -347,7 +507,7 @@ class SQLInjectionScanner(BaseScanner):
                         parameter=param_name,
                         payload=true_responses[0]['payload'],
                         evidence=f"Response length varies based on condition. True: ~{int(avg_true_length)} bytes, False: ~{int(avg_false_length)} bytes, Baseline: {baseline_length} bytes",
-                        description="Boolean-based blind SQL injection detected. The application responds differently to true/false SQL conditions, allowing data extraction through inference.",
+                        description="Boolean-based blind SQL injection detected. The application responds differently to true/false SQL conditions.",
                         cwe_id="CWE-89",
                         cvss_score=9.8,
                         remediation=self._get_remediation('generic'),
@@ -357,7 +517,6 @@ class SQLInjectionScanner(BaseScanner):
                         ]
                     )
             
-            # Check status code differences
             true_statuses = set(r['status'] for r in true_responses)
             false_statuses = set(r['status'] for r in false_responses)
             
@@ -368,8 +527,8 @@ class SQLInjectionScanner(BaseScanner):
                     url=url,
                     parameter=param_name,
                     payload=true_responses[0]['payload'],
-                    evidence=f"Status codes differ. True conditions: {true_statuses}, False conditions: {false_statuses}",
-                    description="Boolean-based blind SQL injection detected. The application returns different HTTP status codes based on SQL conditions.",
+                    evidence=f"Status codes differ. True: {true_statuses}, False: {false_statuses}",
+                    description="Boolean-based blind SQL injection detected via status code differences.",
                     cwe_id="CWE-89",
                     cvss_score=9.8,
                     remediation=self._get_remediation('generic'),
@@ -385,7 +544,7 @@ class SQLInjectionScanner(BaseScanner):
                                 param_name: str) -> Optional[Vulnerability]:
         """Test for time-based blind SQL injection"""
         
-        # First, establish baseline response time
+        # Establish baseline response time
         baseline_times = []
         for _ in range(3):
             try:
@@ -402,7 +561,6 @@ class SQLInjectionScanner(BaseScanner):
         
         avg_baseline = sum(baseline_times) / len(baseline_times)
         
-        # Test time-based payloads
         for payload, delay_seconds, description in self.TIME_BASED_PAYLOADS:
             test_params = params.copy()
             original_value = test_params.get(param_name, '')
@@ -410,15 +568,9 @@ class SQLInjectionScanner(BaseScanner):
             
             try:
                 start = asyncio.get_event_loop().time()
-                
-                # Set a longer timeout for time-based tests
-                timeout = aiohttp.ClientTimeout(total=delay_seconds + 10)
                 response = await self.make_request(session, "GET", url, params=test_params)
-                
                 elapsed = asyncio.get_event_loop().time() - start
                 
-                # Check if response was delayed
-                # Allow for 1 second margin of error
                 if elapsed >= (delay_seconds - 1) and elapsed >= (avg_baseline + delay_seconds - 1):
                     return self.create_vulnerability(
                         vuln_type="SQL Injection (Time-based Blind)",
@@ -427,18 +579,16 @@ class SQLInjectionScanner(BaseScanner):
                         parameter=param_name,
                         payload=payload,
                         evidence=f"Response delayed by {elapsed:.2f}s (expected: {delay_seconds}s, baseline: {avg_baseline:.2f}s). Technique: {description}",
-                        description="Time-based blind SQL injection detected. The application's response time can be controlled through SQL time delay functions.",
+                        description="Time-based blind SQL injection detected.",
                         cwe_id="CWE-89",
                         cvss_score=9.8,
                         remediation=self._get_remediation('generic'),
                         references=[
-                            "https://owasp.org/www-community/attacks/Blind_SQL_Injection",
-                            "https://portswigger.net/web-security/sql-injection/blind"
+                            "https://owasp.org/www-community/attacks/Blind_SQL_Injection"
                         ]
                     )
                     
             except asyncio.TimeoutError:
-                # Timeout might indicate successful time-based injection
                 return self.create_vulnerability(
                     vuln_type="SQL Injection (Time-based Blind - Timeout)",
                     severity=Severity.HIGH,
@@ -446,7 +596,7 @@ class SQLInjectionScanner(BaseScanner):
                     parameter=param_name,
                     payload=payload,
                     evidence=f"Request timed out with delay payload. Technique: {description}",
-                    description="Potential time-based blind SQL injection. The request timed out when a SQL delay function was injected.",
+                    description="Potential time-based blind SQL injection.",
                     cwe_id="CWE-89",
                     cvss_score=8.6,
                     remediation=self._get_remediation('generic'),
@@ -459,62 +609,109 @@ class SQLInjectionScanner(BaseScanner):
         
         return None
     
+    def _get_orm_remediation(self, orm_type: str) -> str:
+        """Get ORM-specific remediation advice"""
+        
+        base = """
+ORM Injection Prevention:
+1. NEVER concatenate user input into HQL/JPQL/Criteria queries
+2. Always use parameterized queries with named or positional parameters
+3. Use the Criteria API or QueryDSL for dynamic queries
+4. Implement input validation as defense-in-depth
+5. Apply least privilege to database accounts
+"""
+        
+        orm_specific = {
+            'hibernate': """
+Hibernate/HQL Specific:
+- Use named parameters: query.setParameter("id", userInput)
+- Use Criteria API for dynamic queries
+
+WRONG:
+  String hql = "FROM User WHERE id = '" + userInput + "'";
+  
+CORRECT:
+  String hql = "FROM User WHERE id = :userId";
+  query.setParameter("userId", userInput);
+""",
+            'jpa': """
+JPA/JPQL Specific:
+- Use TypedQuery with parameters
+- Use CriteriaBuilder for complex queries
+
+WRONG:
+  String jpql = "SELECT u FROM User u WHERE u.name = '" + name + "'";
+
+CORRECT:
+  TypedQuery<User> query = em.createQuery(
+      "SELECT u FROM User u WHERE u.name = :name", User.class);
+  query.setParameter("name", name);
+""",
+            'mybatis': """
+MyBatis Specific:
+- Use #{} syntax (parameterized) NOT ${} (string substitution)
+
+WRONG:
+  SELECT * FROM users WHERE id = ${id}
+  
+CORRECT:
+  SELECT * FROM users WHERE id = #{id}
+""",
+            'entity_framework': """
+Entity Framework Specific:
+- Use LINQ with parameters
+- Avoid raw SQL with string concatenation
+
+WRONG:
+  var query = context.Users.FromSqlRaw($"SELECT * FROM Users WHERE Id = {id}");
+  
+CORRECT:
+  var query = context.Users.FromSqlInterpolated($"SELECT * FROM Users WHERE Id = {id}");
+  // Or better, use LINQ:
+  var user = context.Users.Where(u => u.Id == id);
+"""
+        }
+        
+        return base + orm_specific.get(orm_type, "")
+    
     def _get_remediation(self, db_type: str) -> str:
         """Get database-specific remediation advice"""
         
         base_remediation = """
+SQL Injection Prevention:
 1. Use parameterized queries (prepared statements) for all database operations
 2. Use stored procedures with parameterized inputs
 3. Implement input validation with strict allowlists
 4. Apply the principle of least privilege to database accounts
 5. Escape special characters as a defense-in-depth measure
-6. Use an ORM (Object-Relational Mapping) framework
+6. Use an ORM (Object-Relational Mapping) framework correctly
 7. Implement Web Application Firewall (WAF) rules
-8. Regular security testing and code reviews
 """
         
         db_specific = {
             'mysql': """
 MySQL Specific:
-- Use mysqli_prepare() or PDO::prepare() in PHP
-- Use PreparedStatement in Java
-- Never use mysql_query() with string concatenation
-- Example (PHP PDO):
   $stmt = $pdo->prepare('SELECT * FROM users WHERE id = ?');
   $stmt->execute([$id]);
 """,
             'postgresql': """
 PostgreSQL Specific:
-- Use pg_prepare() and pg_execute() in PHP
-- Use parameterized queries with $1, $2 placeholders
-- Example:
   $result = pg_query_params($conn, 
-    'SELECT * FROM users WHERE id = $1', 
-    array($id));
+    'SELECT * FROM users WHERE id = $1', array($id));
 """,
             'mssql': """
 MSSQL Specific:
-- Use SqlCommand with SqlParameter in .NET
-- Use sp_executesql for dynamic SQL
-- Example (C#):
   using (var cmd = new SqlCommand("SELECT * FROM users WHERE id = @id", conn))
   {
       cmd.Parameters.AddWithValue("@id", id);
-      // Execute...
   }
 """,
             'oracle': """
 Oracle Specific:
-- Use bind variables in all queries
-- Use DBMS_ASSERT for input validation
-- Example (PL/SQL):
   EXECUTE IMMEDIATE 'SELECT * FROM users WHERE id = :1' USING v_id;
 """,
             'sqlite': """
 SQLite Specific:
-- Use sqlite3_prepare_v2() with sqlite3_bind_*()
-- Use parameterized queries in your language's SQLite library
-- Example (Python):
   cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
 """
         }

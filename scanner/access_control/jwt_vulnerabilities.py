@@ -31,7 +31,7 @@ class JWTVulnerabilitiesScanner(BaseScanner):
 
     name="JWT Vulnerabilities Scanner",
     description="Detects JWT implementation vulnerabilities",
-    owasp_category=OWASPCategory.A02_CRYPTOGRAPHIC_FAILURES
+    owasp_category=OWASPCategory.A01_BROKEN_ACCESS_CONTROL
     
     def __init__(self):
         
