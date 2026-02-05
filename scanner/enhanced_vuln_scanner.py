@@ -20,62 +20,86 @@ from .ai.groq_analyzer import GroqAnalyzer, AIAnalysisResult
 # =====================================================
 
 # ----- A01:2025 - Broken Access Control (now includes SSRF) -----
-from .access_control.idor import IDORScanner
-from .access_control.path_traversal import PathTraversalScanner
-from .access_control.forced_browsing import ForcedBrowsingScanner
-from .access_control.privilege_escalation import PrivilegeEscalationScanner
-from .access_control.jwt_vulnerabilities import JWTVulnerabilitiesScanner
-from .access_control.ssrf import SSRFScanner  # Moved from A10:2021 to A01:2025
+from .a01_access_control.csrf import CSRFScanner
+from .a01_access_control.open_redirect import OpenRedirectScanner
+from .a01_access_control.idor import IDORScanner
+from .a01_access_control.path_traversal import PathTraversalScanner
+from .a01_access_control.forced_browsing import ForcedBrowsingScanner
+from .a01_access_control.privilege_escalation import PrivilegeEscalationScanner
+from .a01_access_control.jwt_vulnerabilities import JWTVulnerabilitiesScanner
+from .a01_access_control.ssrf import SSRFScanner  # Moved from A10:2021 to A01:2025
 
 # ----- A02:2025 - Security Misconfiguration (moved up from A05:2021) -----
-from .misconfig.headers import SecurityHeadersScanner
-from .misconfig.cors import CORSScanner
-from .misconfig.debug import DebugModeScanner
-from .misconfig.backup import BackupFileScanner
-from .misconfig.ssl_tls import SSLTLSScanner
-from .misconfig.cookie_security import CookieSecurityScanner
-from .misconfig.information_disclosure import InformationDisclosureScanner
+from .a02_misconfig.headers import SecurityHeadersScanner
+from .a02_misconfig.cors import CORSScanner
+from .a02_misconfig.debug import DebugModeScanner
+from .a02_misconfig.backup import BackupFileScanner
+from .a02_misconfig.ssl_tls import SSLTLSScanner
+from .a02_misconfig.cookie_security import CookieSecurityScanner
+from .a02_misconfig.information_disclosure import InformationDisclosureScanner
+from .a02_misconfig.config_exposure import ConfigExposureScanner
+from .a02_misconfig.default_credentials import DefaultCredentialsScanner
 
 # ----- A03:2025 - Software Supply Chain Failures (expanded from A06:2021) -----
 from .cve.known_cve import KnownCVEScanner
-from .supply_chain.dependency_check import DependencyCheckScanner
-from .supply_chain.integrity_check import IntegrityCheckScanner
-from .supply_chain.outdated_components import OutdatedComponentsScanner
+from .a03_supply_chain.dependency_check import DependencyCheckScanner
+from .a03_supply_chain.integrity_check import IntegrityCheckScanner
+from .a03_supply_chain.outdated_components import OutdatedComponentsScanner
 
 # ----- A04:2025 - Cryptographic Failures (moved down from A02:2021) -----
-from .cryptographic.weak_crypto import WeakCryptoScanner
-from .cryptographic.sensitive_data_exposure import SensitiveDataExposureScanner
+from .a04_cryptographic.weak_crypto import WeakCryptoScanner
+from .a04_cryptographic.sensitive_data_exposure import SensitiveDataExposureScanner
 
 # ----- A05:2025 - Injection (moved down from A03:2021, still critical) -----
-from .injection.sqli import SQLInjectionScanner
-from .injection.nosqli import NoSQLInjectionScanner
-from .injection.cmdi import CommandInjectionScanner
-from .injection.ssti import SSTIScanner
-from .injection.ldapi import LDAPInjectionScanner
-from .injection.xpath import XPathInjectionScanner
-from .injection.hhi import HostHeaderInjectionScanner
-from .injection.xss import XSSScanner
-from .injection.dom_xss import DOMXSSScanner
+from .a05_injection.sqli import SQLInjectionScanner
+from .a05_injection.nosqli import NoSQLInjectionScanner
+from .a05_injection.cmdi import CommandInjectionScanner
+from .a05_injection.ssti import SSTIScanner
+from .a05_injection.ldapi import LDAPInjectionScanner
+from .a05_injection.xpath import XPathInjectionScanner
+from .a05_injection.hhi import HostHeaderInjectionScanner
+from .a05_injection.xss import XSSScanner
+from .a05_injection.dom_xss import DOMXSSScanner
+from .a05_injection.code_injection import CodeInjectionScanner
+from .a05_injection.crlf import CRLFInjectionScanner
+from .a05_injection.el_injection import ELInjectionScanner
 from .xxe.xxe import XXEScanner
 
 # ----- A06:2025 - Insecure Design -----
+from .a06_insecure_design.business_logic import BusinessLogicScanner
+from .a06_insecure_design.clickjacking import ClickjackingScanner
+from .a06_insecure_design.file_upload import FileUploadScanner
+from .a06_insecure_design.http_smuggling import HTTPSmugglingScanner
+from .a06_insecure_design.race_condition import RaceConditionScanner
+from .a06_insecure_design.trust_boundary import TrustBoundaryScanner
 from .api_security.rate_limiting import RateLimitingScanner
 
 # ----- A07:2025 - Authentication Failures -----
-from .authentication.brute_force import BruteForceScanner
-from .authentication.session_fixation import SessionFixationScanner
-from .authentication.weak_password import WeakPasswordPolicyScanner
+from .a07_authentication.auth_bypass import AuthBypassScanner
+from .a07_authentication.brute_force import BruteForceScanner
+from .a07_authentication.default_credentials import DefaultCredentials07Scanner
+from .a07_authentication.mfa_check import MFAScanner
+from .a07_authentication.session_fixation import SessionFixationScanner
+from .a07_authentication.session_management import SessionManagementScanner
+from .a07_authentication.weak_password import WeakPasswordPolicyScanner
 
 # ----- A08:2025 - Software or Data Integrity Failures -----
-from .deserialization.insecure_deserialization import InsecureDeserializationScanner
+from .a08_deserialization.code_integrity import CodeIntegrityScanner
+from .a08_deserialization.cookie_integrity import CookieIntegrityScanner
+from .a08_deserialization.insecure_deserialization import InsecureDeserializationScanner
+from .a08_deserialization.subresource_integrity import SubresourceIntegrityScanner
 
 # ----- A09:2025 - Security Logging and Alerting Failures -----
-# (Passive detection - limited black-box testing capability)
+from .a09_logging.log_injection import LogInjectionScanner
+from .a09_logging.sensitive_log_data import SensitiveLogDataScanner
+from .a09_logging.log_file_exposure import LogFileExposureScanner
+from .a09_logging.insufficient_logging import InsufficientLoggingScanner
+from .a09_logging.alert_detection import AlertDetectionScanner
 
 # ----- A10:2025 - Mishandling of Exceptional Conditions (NEW) -----
-from .exceptional_conditions.error_handling import ErrorHandlingScanner
-from .exceptional_conditions.fail_open import FailOpenScanner
-from .exceptional_conditions.resource_limits import ResourceLimitsScanner
+from .a10_exceptional_conditions.error_handling import ErrorHandlingScanner
+from .a10_exceptional_conditions.fail_open import FailOpenScanner
+from .a10_exceptional_conditions.resource_limits import ResourceLimitsScanner
 
 # ----- API Security (Additional) -----
 from .api_security.mass_assignment import MassAssignmentScanner
@@ -131,9 +155,6 @@ class EnhancedVulnerabilityScanner:
         # Progress callback
         self._progress_callback = None
         
-        # =====================================================
-        # INITIALIZE ALL 35+ SCANNERS - OWASP 2025 ORGANIZED
-        # =====================================================
         self.all_scanners = {
             # ==========================================
             # A01:2025 - Broken Access Control
@@ -145,6 +166,8 @@ class EnhancedVulnerabilityScanner:
             'privilege_escalation': PrivilegeEscalationScanner(),
             'jwt': JWTVulnerabilitiesScanner(),
             'ssrf': SSRFScanner(),  # Moved from A10:2021
+            'csrf': CSRFScanner(),
+            'open_redirect': OpenRedirectScanner(),
             
             # ==========================================
             # A02:2025 - Security Misconfiguration
@@ -157,6 +180,8 @@ class EnhancedVulnerabilityScanner:
             'ssl_tls': SSLTLSScanner(),
             'cookie_security': CookieSecurityScanner(),
             'information_disclosure': InformationDisclosureScanner(),
+            'config_exposure': ConfigExposureScanner(),
+            'default_credentials': DefaultCredentialsScanner(),
             
             # ==========================================
             # A03:2025 - Software Supply Chain Failures
@@ -188,29 +213,47 @@ class EnhancedVulnerabilityScanner:
             'xss': XSSScanner(),
             'dom_xss': DOMXSSScanner(),
             'xxe': XXEScanner(),
+            'code_injection': CodeInjectionScanner(),
+            'crlf': CRLFInjectionScanner(),
+            'el_injection': ELInjectionScanner(),
             
             # ==========================================
             # A06:2025 - Insecure Design
             # ==========================================
             'rate_limiting': RateLimitingScanner(),
-            'brute_force': BruteForceScanner(),
+            'business_logic': BusinessLogicScanner(),
+            'clickjacking': ClickjackingScanner(),
+            'file_upload': FileUploadScanner(),
+            'http_smuggling': HTTPSmugglingScanner(),
+            'race_condition': RaceConditionScanner(),
+            'trust_boundary': TrustBoundaryScanner(),
             
             # ==========================================
             # A07:2025 - Authentication Failures
             # ==========================================
+            'auth_bypass': AuthBypassScanner(),
+            'brute_force': BruteForceScanner(),
+            'default_credentials': DefaultCredentials07Scanner(),
+            'mfa_check': MFAScanner(),
             'session_fixation': SessionFixationScanner(),
+            'session_management': SessionManagementScanner(),
             'weak_password': WeakPasswordPolicyScanner(),
             
             # ==========================================
             # A08:2025 - Software or Data Integrity Failures
             # ==========================================
+            'code_integrity': CodeIntegrityScanner(),
+            'cookie_integrity': CookieIntegrityScanner(),
             'deserialization': InsecureDeserializationScanner(),
-            
+            'subresource_integrity': SubresourceIntegrityScanner(),
             # ==========================================
             # A09:2025 - Security Logging and Alerting Failures
-            # (Limited black-box testing - passive detection only)
             # ==========================================
-            # Covered passively through other scanners
+            'log_injection': LogInjectionScanner(),
+            'sensitive_log_data': SensitiveLogDataScanner(),
+            'log_file_exposure': LogFileExposureScanner(),
+            'insufficient_logging': InsufficientLoggingScanner(),
+            'alert_detection': AlertDetectionScanner(),
             
             # ==========================================
             # A10:2025 - Mishandling of Exceptional Conditions
@@ -271,15 +314,15 @@ class EnhancedVulnerabilityScanner:
     def _calculate_owasp_coverage(self) -> Dict:
         """Calculate OWASP 2025 category coverage"""
         owasp_mapping = {
-            'A01': ['idor', 'path_traversal', 'forced_browsing', 'privilege_escalation', 'jwt', 'ssrf'],
-            'A02': ['headers', 'cors', 'debug', 'backup', 'ssl_tls', 'cookie_security', 'information_disclosure'],
+            'A01': ['idor', 'path_traversal', 'forced_browsing', 'privilege_escalation', 'jwt', 'ssrf', 'csrf', 'open_redirect'],
+            'A02': ['headers', 'cors', 'debug', 'backup', 'ssl_tls', 'cookie_security', 'information_disclosure', 'config_exposure', 'default_credentials'],
             'A03': ['known_cve', 'dependency_check', 'integrity_check', 'outdated_components'],
             'A04': ['weak_crypto', 'sensitive_data_exposure'],
-            'A05': ['sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi', 'ssti', 'ldapi', 'xpath', 'hhi', 'xxe'],
-            'A06': ['rate_limiting', 'brute_force'],
-            'A07': ['session_fixation', 'weak_password', 'jwt'],
-            'A08': ['deserialization', 'integrity_check'],
-            'A09': [],  # Limited black-box testing
+            'A05': ['sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi', 'ssti', 'ldapi', 'xpath', 'hhi', 'xxe', 'code_injection', 'crlf', 'el_injection'],
+            'A06': ['rate_limiting', 'business_logic', 'clickjacking', 'file_upload', 'http_smuggling', 'race_condition', 'trust_boundary'],
+            'A07': ['session_fixation', 'weak_password', 'brute_force', 'auth_bypass', 'default_credentials', 'mfa_check', 'session_management'],
+            'A08': ['deserialization', 'code_integrity', 'cookie_integrity', 'subresource_integrity'],
+            'A09': ['log_injection', 'sensitive_log_data', 'log_file_exposure', 'insufficient_logging', 'alert_detection'],
             'A10': ['error_handling', 'fail_open', 'resource_limits'],
         }
         
@@ -826,18 +869,13 @@ class EnhancedVulnerabilityScanner:
     def _get_active_site_scanners(self) -> Dict:
         """Get scanners that scan entire sites (not parameter-specific)"""
         site_scanner_names = [
-            # A02 - Misconfiguration
             'headers', 'cors', 'ssl_tls', 'debug', 'backup', 
             'cookie_security', 'information_disclosure',
-            # A03 - Supply Chain
-            'known_cve', 'dependency_check', 'integrity_check', 'outdated_components',
-            # A04 - Crypto
+            'known_cve', 'dependency_check', '', 'outdated_components',
             'weak_crypto', 'sensitive_data_exposure',
-            # A06 - Insecure Design
             'rate_limiting',
-            # A10 - Exceptional Conditions
+            'log_file_exposure', 'insufficient_logging', 'alert_detection',
             'error_handling', 'fail_open', 'resource_limits',
-            # API
             'graphql',
         ]
         return {k: v for k, v in self.active_scanners.items() 
@@ -848,7 +886,7 @@ class EnhancedVulnerabilityScanner:
         site_scanner_names = [
             'headers', 'cors', 'ssl_tls', 'debug', 'backup', 
             'cookie_security', 'information_disclosure',
-            'known_cve', 'dependency_check', 'integrity_check', 'outdated_components',
+            'known_cve', 'dependency_check', '', 'outdated_components',
             'weak_crypto', 'sensitive_data_exposure',
             'rate_limiting',
             'error_handling', 'fail_open', 'resource_limits',
@@ -902,7 +940,7 @@ class EnhancedVulnerabilityScanner:
                 'cookie_security', 'information_disclosure'
             ],
             'A03:2025 - Software Supply Chain Failures': [
-                'known_cve', 'dependency_check', 'integrity_check', 'outdated_components'
+                'known_cve', 'dependency_check', '', 'outdated_components'
             ],
             'A04:2025 - Cryptographic Failures': [
                 'weak_crypto', 'sensitive_data_exposure'
@@ -918,10 +956,11 @@ class EnhancedVulnerabilityScanner:
                 'session_fixation', 'weak_password', 'jwt', 'brute_force'
             ],
             'A08:2025 - Software or Data Integrity Failures': [
-                'deserialization', 'integrity_check'
+                'deserialization', ''
             ],
             'A09:2025 - Security Logging and Alerting Failures': [
-                # Limited black-box testing capability
+                'log_injection', 'sensitive_log_data', 'log_file_exposure',
+                'insufficient_logging', 'alert_detection'
             ],
             'A10:2025 - Mishandling of Exceptional Conditions': [
                 'error_handling', 'fail_open', 'resource_limits'

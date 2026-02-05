@@ -36,7 +36,7 @@ OWASP_2025_CATEGORIES = {
         "short": "Access Control",
         "color": "#dc3545",  # Red
         "description": "Failures in access control enforcement, allowing users to act outside intended permissions. Now includes SSRF.",
-        "url": "https://owasp.org/Top10/A01_2025-Broken_Access_Control/",
+        "url": "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/",
         "key_cwes": ["CWE-200", "CWE-201", "CWE-352", "CWE-639", "CWE-862", "CWE-863", "CWE-918"],
         "total_cwes": 40,
         "key_changes": "Absorbs SSRF (previously A10:2021). Highest occurrence in data."
@@ -47,7 +47,7 @@ OWASP_2025_CATEGORIES = {
         "short": "Misconfiguration",
         "color": "#fd7e14",  # Orange
         "description": "Missing security hardening, default credentials, overly permissive cloud settings, verbose errors.",
-        "url": "https://owasp.org/Top10/A02_2025-Security_Misconfiguration/",
+        "url": "https://owasp.org/Top10/2025/A02_2025-Security_Misconfiguration/",
         "key_cwes": ["CWE-16", "CWE-611", "CWE-489", "CWE-942", "CWE-1004"],
         "total_cwes": 16,
         "key_changes": "Moved UP from #5. Now covers cloud/infrastructure misconfigurations. XXE (CWE-611) included here."
@@ -58,7 +58,7 @@ OWASP_2025_CATEGORIES = {
         "short": "Supply Chain",
         "color": "#e83e8c",  # Pink
         "description": "Vulnerabilities in dependencies, CI/CD pipelines, and software components. Expanded beyond just outdated components.",
-        "url": "https://owasp.org/Top10/A03_2025-Software_Supply_Chain_Failures/",
+        "url": "https://owasp.org/Top10/2025/A03_2025-Software_Supply_Chain_Failures/",
         "key_cwes": ["CWE-1104", "CWE-1395", "CWE-1329", "CWE-477"],
         "total_cwes": 6,
         "key_changes": "RENAMED from 'Vulnerable and Outdated Components'. Now covers entire supply chain including CI/CD, SBOM, build pipelines."
@@ -69,7 +69,7 @@ OWASP_2025_CATEGORIES = {
         "short": "Crypto Failures",
         "color": "#6f42c1",  # Purple
         "description": "Weak cryptography, missing encryption, poor key management, deprecated algorithms.",
-        "url": "https://owasp.org/Top10/A04_2025-Cryptographic_Failures/",
+        "url": "https://owasp.org/Top10/2025/A04_2025-Cryptographic_Failures/",
         "key_cwes": ["CWE-327", "CWE-331", "CWE-338", "CWE-326", "CWE-916"],
         "total_cwes": 32,
         "key_changes": "Moved DOWN from #2. Focus on weak PRNG, broken algorithms, post-quantum readiness."
@@ -80,7 +80,7 @@ OWASP_2025_CATEGORIES = {
         "short": "Injection",
         "color": "#d63384",  # Magenta
         "description": "SQL, NoSQL, OS command, LDAP, XPath injection and XSS. Untrusted data sent to interpreters.",
-        "url": "https://owasp.org/Top10/A05_2025-Injection/",
+        "url": "https://owasp.org/Top10/2025/A05_2025-Injection/",
         "key_cwes": ["CWE-79", "CWE-89", "CWE-78", "CWE-94", "CWE-917"],
         "total_cwes": 37,
         "key_changes": "Moved DOWN from #3. XSS now explicitly included. Highest CVE count (62,445). LLM prompt injection mentioned separately."
@@ -91,7 +91,7 @@ OWASP_2025_CATEGORIES = {
         "short": "Insecure Design",
         "color": "#20c997",  # Teal
         "description": "Missing or ineffective security controls, architectural flaws, business logic vulnerabilities.",
-        "url": "https://owasp.org/Top10/A06_2025-Insecure_Design/",
+        "url": "https://owasp.org/Top10/2025/A06_2025-Insecure_Design/",
         "key_cwes": ["CWE-256", "CWE-269", "CWE-434", "CWE-501", "CWE-522"],
         "total_cwes": 39,
         "key_changes": "Moved DOWN from #4. Focus on threat modeling, secure design patterns, SDLC."
@@ -102,7 +102,7 @@ OWASP_2025_CATEGORIES = {
         "short": "Auth Failures",
         "color": "#0dcaf0",  # Cyan
         "description": "Weaknesses in authentication, session management, credential handling, and identity verification.",
-        "url": "https://owasp.org/Top10/A07_2025-Authentication_Failures/",
+        "url": "https://owasp.org/Top10/2025/A07_2025-Authentication_Failures/",
         "key_cwes": ["CWE-259", "CWE-287", "CWE-384", "CWE-798", "CWE-1392"],
         "total_cwes": 36,
         "key_changes": "Slight name change. Now includes hybrid password spray attacks, MFA bypass, breached credential checks."
@@ -113,7 +113,7 @@ OWASP_2025_CATEGORIES = {
         "short": "Integrity Failures",
         "color": "#198754",  # Green
         "description": "Code and infrastructure without integrity verification, insecure deserialization, unsigned updates.",
-        "url": "https://owasp.org/Top10/A08_2025-Software_and_Data_Integrity_Failures/",
+        "url": "https://owasp.org/Top10/2025/A08_2025-Software_and_Data_Integrity_Failures/",
         "key_cwes": ["CWE-502", "CWE-829", "CWE-915", "CWE-494", "CWE-345"],
         "total_cwes": 14,
         "key_changes": "Clarifying name change. Focuses on trust boundaries, unsigned code, CDN integrity (SRI)."
@@ -124,7 +124,7 @@ OWASP_2025_CATEGORIES = {
         "short": "Logging Failures",
         "color": "#6c757d",  # Gray
         "description": "Insufficient logging, monitoring, and alerting. Failure to detect and respond to attacks.",
-        "url": "https://owasp.org/Top10/A09_2025-Security_Logging_and_Alerting_Failures/",
+        "url": "https://owasp.org/Top10/2025/A09_2025-Security_Logging_and_Alerting_Failures/",
         "key_cwes": ["CWE-117", "CWE-223", "CWE-532", "CWE-778"],
         "total_cwes": 5,
         "key_changes": "RENAMED to emphasize 'Alerting'. Focus on actionable alerts, not just logging."
@@ -135,7 +135,7 @@ OWASP_2025_CATEGORIES = {
         "short": "Exceptional Conditions",
         "color": "#ffc107",  # Yellow
         "description": "Systems that fail open, improper error handling, resource exhaustion, unhandled exceptions.",
-        "url": "https://owasp.org/Top10/A10_2025-Mishandling_of_Exceptional_Conditions/",
+        "url": "https://owasp.org/Top10/2025/A10_2025-Mishandling_of_Exceptional_Conditions/",
         "key_cwes": ["CWE-209", "CWE-476", "CWE-636", "CWE-754", "CWE-755"],
         "total_cwes": 24,
         "key_changes": "🆕 NEW CATEGORY replacing SSRF. Focuses on fail-open, error handling, resource limits, state corruption."

@@ -7,69 +7,93 @@ import asyncio
 import aiohttp
 
 from .base import BaseScanner, Vulnerability, Severity, OWASPCategory
-from .parallel_executor import ParallelScanExecutor, ScanWorkerPool
+from .parallel_executor import ParallelScanExecutor
 
-# Injection scanners (A05:2025)
-from .injection.sqli import SQLInjectionScanner
-from .injection.nosqli import NoSQLInjectionScanner
-from .injection.cmdi import CommandInjectionScanner
-from .injection.ssti import SSTIScanner
-from .injection.ldapi import LDAPInjectionScanner
-from .injection.xpath import XPathInjectionScanner
-from .injection.hhi import HostHeaderInjectionScanner
-from .injection.xss import XSSScanner
-from .injection.dom_xss import DOMXSSScanner
+# ----- A01:2025 - Broken Access Control (now includes SSRF) -----
+from .a01_access_control.csrf import CSRFScanner
+from .a01_access_control.open_redirect import OpenRedirectScanner
+from .a01_access_control.idor import IDORScanner
+from .a01_access_control.path_traversal import PathTraversalScanner
+from .a01_access_control.forced_browsing import ForcedBrowsingScanner
+from .a01_access_control.privilege_escalation import PrivilegeEscalationScanner
+from .a01_access_control.jwt_vulnerabilities import JWTVulnerabilitiesScanner
+from .a01_access_control.ssrf import SSRFScanner  # Moved from A10:2021 to A01:2025
 
-# Access control scanners (A01:2025 - now includes SSRF)
-from .access_control.idor import IDORScanner
-from .access_control.path_traversal import PathTraversalScanner
-from .access_control.forced_browsing import ForcedBrowsingScanner
-from .access_control.privilege_escalation import PrivilegeEscalationScanner
-from .access_control.jwt_vulnerabilities import JWTVulnerabilitiesScanner
-from .access_control.ssrf import SSRFScanner  
+# ----- A02:2025 - Security Misconfiguration (moved up from A05:2021) -----
+from .a02_misconfig.headers import SecurityHeadersScanner
+from .a02_misconfig.cors import CORSScanner
+from .a02_misconfig.debug import DebugModeScanner
+from .a02_misconfig.backup import BackupFileScanner
+from .a02_misconfig.ssl_tls import SSLTLSScanner
+from .a02_misconfig.cookie_security import CookieSecurityScanner
+from .a02_misconfig.information_disclosure import InformationDisclosureScanner
+from .a02_misconfig.config_exposure import ConfigExposureScanner
+from .a02_misconfig.default_credentials import DefaultCredentialsScanner
 
-# Misconfiguration scanners (A02:2025 - moved up)
-from .misconfig.headers import SecurityHeadersScanner
-from .misconfig.cors import CORSScanner
-from .misconfig.debug import DebugModeScanner
-from .misconfig.backup import BackupFileScanner
-from .misconfig.ssl_tls import SSLTLSScanner
-from .misconfig.cookie_security import CookieSecurityScanner
-from .misconfig.information_disclosure import InformationDisclosureScanner
+# ----- A03:2025 - Software Supply Chain Failures (expanded from A06:2021) -----
+from .cve.known_cve import KnownCVEScanner
+from .a03_supply_chain.dependency_check import DependencyCheckScanner
+from .a03_supply_chain.integrity_check import IntegrityCheckScanner
+from .a03_supply_chain.outdated_components import OutdatedComponentsScanner
 
-# XXE scanner (A05:2025 - Injection)
+# ----- A04:2025 - Cryptographic Failures (moved down from A02:2021) -----
+from .a04_cryptographic.weak_crypto import WeakCryptoScanner
+from .a04_cryptographic.sensitive_data_exposure import SensitiveDataExposureScanner
+
+# ----- A05:2025 - Injection (moved down from A03:2021, still critical) -----
+from .a05_injection.sqli import SQLInjectionScanner
+from .a05_injection.nosqli import NoSQLInjectionScanner
+from .a05_injection.cmdi import CommandInjectionScanner
+from .a05_injection.ssti import SSTIScanner
+from .a05_injection.ldapi import LDAPInjectionScanner
+from .a05_injection.xpath import XPathInjectionScanner
+from .a05_injection.hhi import HostHeaderInjectionScanner
+from .a05_injection.xss import XSSScanner
+from .a05_injection.dom_xss import DOMXSSScanner
+from .a05_injection.code_injection import CodeInjectionScanner
+from .a05_injection.crlf import CRLFInjectionScanner
+from .a05_injection.el_injection import ELInjectionScanner
 from .xxe.xxe import XXEScanner
 
-# Deserialization scanner (A08:2025)
-from .deserialization.insecure_deserialization import InsecureDeserializationScanner
-
-# API security scanners
+# ----- A06:2025 - Insecure Design -----
+from .a06_insecure_design.business_logic import BusinessLogicScanner
+from .a06_insecure_design.clickjacking import ClickjackingScanner
+from .a06_insecure_design.file_upload import FileUploadScanner
+from .a06_insecure_design.http_smuggling import HTTPSmugglingScanner
+from .a06_insecure_design.race_condition import RaceConditionScanner
+from .a06_insecure_design.trust_boundary import TrustBoundaryScanner
 from .api_security.rate_limiting import RateLimitingScanner
+
+# ----- A07:2025 - Authentication Failures -----
+from .a07_authentication.auth_bypass import AuthBypassScanner
+from .a07_authentication.brute_force import BruteForceScanner
+from .a07_authentication.default_credentials import DefaultCredentials07Scanner
+from .a07_authentication.mfa_check import MFAScanner
+from .a07_authentication.session_fixation import SessionFixationScanner
+from .a07_authentication.session_management import SessionManagementScanner
+from .a07_authentication.weak_password import WeakPasswordPolicyScanner
+
+# ----- A08:2025 - Software or Data Integrity Failures -----
+from .a08_deserialization.code_integrity import CodeIntegrityScanner
+from .a08_deserialization.cookie_integrity import CookieIntegrityScanner
+from .a08_deserialization.insecure_deserialization import InsecureDeserializationScanner
+from .a08_deserialization.subresource_integrity import SubresourceIntegrityScanner
+
+# ----- A09:2025 - Security Logging and Alerting Failures -----
+from .a09_logging.log_injection import LogInjectionScanner
+from .a09_logging.sensitive_log_data import SensitiveLogDataScanner
+from .a09_logging.log_file_exposure import LogFileExposureScanner
+from .a09_logging.insufficient_logging import InsufficientLoggingScanner
+from .a09_logging.alert_detection import AlertDetectionScanner
+
+# ----- A10:2025 - Mishandling of Exceptional Conditions (NEW) -----
+from .a10_exceptional_conditions.error_handling import ErrorHandlingScanner
+from .a10_exceptional_conditions.fail_open import FailOpenScanner
+from .a10_exceptional_conditions.resource_limits import ResourceLimitsScanner
+
+# ----- API Security (Additional) -----
 from .api_security.mass_assignment import MassAssignmentScanner
 from .api_security.graphql import GraphQLScanner
-
-# Authentication scanners (A07:2025)
-from .authentication.brute_force import BruteForceScanner
-from .authentication.session_fixation import SessionFixationScanner
-from .authentication.weak_password import WeakPasswordPolicyScanner
-
-# Cryptographic scanners (A04:2025 - moved down)
-from .cryptographic.weak_crypto import WeakCryptoScanner
-from .cryptographic.sensitive_data_exposure import SensitiveDataExposureScanner
-
-# CVE scanner (A03:2025 - Supply Chain)
-from .cve.known_cve import KnownCVEScanner
-
-# === NEW OWASP 2025 SCANNERS ===
-# Supply Chain scanners (A03:2025)
-from .supply_chain.dependency_check import DependencyCheckScanner
-from .supply_chain.integrity_check import IntegrityCheckScanner
-from .supply_chain.outdated_components import OutdatedComponentsScanner
-
-# Exceptional Conditions scanners (A10:2025)
-from .exceptional_conditions.error_handling import ErrorHandlingScanner
-from .exceptional_conditions.fail_open import FailOpenScanner
-from .exceptional_conditions.resource_limits import ResourceLimitsScanner
 
 
 class VulnerabilityScanner:
@@ -117,97 +141,106 @@ class VulnerabilityScanner:
             'forced_browsing': ForcedBrowsingScanner(),
             'privilege_escalation': PrivilegeEscalationScanner(),
             'jwt': JWTVulnerabilitiesScanner(),
-            'ssrf': SSRFScanner(),  # ← Moved from A10:2021
+            'ssrf': SSRFScanner(),  # Moved from A10:2021
+            'csrf': CSRFScanner(),
+            'open_redirect': OpenRedirectScanner(),
             
             # ==========================================
             # A02:2025 - Security Misconfiguration
-            # (Moved UP from #5, expanded for cloud/infra)
+            # (Moved UP from A05:2021, expanded for cloud/infra)
             # ==========================================
             'headers': SecurityHeadersScanner(),
             'cors': CORSScanner(),
             'debug': DebugModeScanner(),
             'backup': BackupFileScanner(),
+            'ssl_tls': SSLTLSScanner(),
             'cookie_security': CookieSecurityScanner(),
-            'info_disclosure': InformationDisclosureScanner(),
-            # TODO: Add cloud misconfiguration scanners
-            # 'aws_misconfig': AWSMisconfigScanner(),
-            # 'azure_misconfig': AzureMisconfigScanner(),
-            # 'k8s_misconfig': KubernetesMisconfigScanner(),
+            'information_disclosure': InformationDisclosureScanner(),
+            'config_exposure': ConfigExposureScanner(),
+            'default_credentials': DefaultCredentialsScanner(),
             
             # ==========================================
             # A03:2025 - Software Supply Chain Failures
-            # (Renamed from "Vulnerable and Outdated Components")
-            # (Now covers CI/CD, dependencies, build pipelines)
+            # (Renamed from "Vulnerable Components", now covers CI/CD, deps)
             # ==========================================
             'known_cve': KnownCVEScanner(),
-            'dependency_check': DependencyCheckScanner(),      
-            'integrity_check': IntegrityCheckScanner(),        
-            'outdated_components': OutdatedComponentsScanner(),
+            'dependency_check': DependencyCheckScanner(),      # NEW
+            'integrity_check': IntegrityCheckScanner(),        # NEW
+            'outdated_components': OutdatedComponentsScanner(), # NEW
             
             # ==========================================
             # A04:2025 - Cryptographic Failures
-            # (Moved DOWN from #2)
+            # (Moved DOWN from A02:2021)
             # ==========================================
-            'ssl_tls': SSLTLSScanner(),
             'weak_crypto': WeakCryptoScanner(),
-            'sensitive_data': SensitiveDataExposureScanner(),
+            'sensitive_data_exposure': SensitiveDataExposureScanner(),
             
             # ==========================================
             # A05:2025 - Injection
-            # (Moved DOWN from #3, still critical)
+            # (Moved DOWN from A03:2021, still critical)
             # ==========================================
             'sqli': SQLInjectionScanner(),
             'nosqli': NoSQLInjectionScanner(),
             'cmdi': CommandInjectionScanner(),
             'ssti': SSTIScanner(),
-            'xss': XSSScanner(),
-            'dom_xss': DOMXSSScanner(),
             'ldapi': LDAPInjectionScanner(),
             'xpath': XPathInjectionScanner(),
             'hhi': HostHeaderInjectionScanner(),
+            'xss': XSSScanner(),
+            'dom_xss': DOMXSSScanner(),
             'xxe': XXEScanner(),
+            'code_injection': CodeInjectionScanner(),
+            'crlf': CRLFInjectionScanner(),
+            'el_injection': ELInjectionScanner(),
             
             # ==========================================
             # A06:2025 - Insecure Design
             # ==========================================
             'rate_limiting': RateLimitingScanner(),
-            'brute_force': BruteForceScanner(),
-            # TODO: Add design flaw scanners
-            # 'threat_model': ThreatModelScanner(),
-            # 'business_logic': BusinessLogicScanner(),
+            'business_logic': BusinessLogicScanner(),
+            'clickjacking': ClickjackingScanner(),
+            'file_upload': FileUploadScanner(),
+            'http_smuggling': HTTPSmugglingScanner(),
+            'race_condition': RaceConditionScanner(),
+            'trust_boundary': TrustBoundaryScanner(),
             
             # ==========================================
             # A07:2025 - Authentication Failures
             # ==========================================
+            'auth_bypass': AuthBypassScanner(),
+            'brute_force': BruteForceScanner(),
+            'default_credentials': DefaultCredentials07Scanner(),
+            'mfa_check': MFAScanner(),
             'session_fixation': SessionFixationScanner(),
+            'session_management': SessionManagementScanner(),
             'weak_password': WeakPasswordPolicyScanner(),
             
             # ==========================================
             # A08:2025 - Software or Data Integrity Failures
             # ==========================================
+            'code_integrity': CodeIntegrityScanner(),
+            'cookie_integrity': CookieIntegrityScanner(),
             'deserialization': InsecureDeserializationScanner(),
-            # TODO: Add integrity scanners
-            # 'code_signing': CodeSigningScanner(),
-            # 'update_integrity': UpdateIntegrityScanner(),
-            
+            'subresource_integrity': SubresourceIntegrityScanner(),
             # ==========================================
             # A09:2025 - Security Logging and Alerting Failures
-            # (Renamed to emphasize alerting)
             # ==========================================
-            # TODO: Add logging/alerting scanners
-            # 'logging_check': LoggingCheckScanner(),
-            # 'alert_config': AlertConfigScanner(),
+            'log_injection': LogInjectionScanner(),
+            'sensitive_log_data': SensitiveLogDataScanner(),
+            'log_file_exposure': LogFileExposureScanner(),
+            'insufficient_logging': InsufficientLoggingScanner(),
+            'alert_detection': AlertDetectionScanner(),
             
             # ==========================================
             # A10:2025 - Mishandling of Exceptional Conditions
-            # (🆕 NEW CATEGORY - replaces SSRF)
+            # (🆕 NEW CATEGORY - replaces SSRF which moved to A01)
             # ==========================================
-            'error_handling': ErrorHandlingScanner(),   
-            'fail_open': FailOpenScanner(),             
-            'resource_limits': ResourceLimitsScanner(),
+            'error_handling': ErrorHandlingScanner(),    # NEW
+            'fail_open': FailOpenScanner(),              # NEW
+            'resource_limits': ResourceLimitsScanner(),  # NEW
             
             # ==========================================
-            # Additional Scanners (API-focused)
+            # API Security (Additional)
             # ==========================================
             'graphql': GraphQLScanner(),
             'mass_assignment': MassAssignmentScanner(),
@@ -372,61 +405,61 @@ class VulnerabilityScanner:
         
         return unique_vulns
     
-    async def scan_target_fast(self, crawl_results: Dict) -> List[Vulnerability]:
-        """
-        Fast scan using worker pool pattern for maximum parallelism.
+    # async def scan_target_fast(self, crawl_results: Dict) -> List[Vulnerability]:
+    #     """
+    #     Fast scan using worker pool pattern for maximum parallelism.
         
-        Args:
-            crawl_results: Results from the crawler
+    #     Args:
+    #         crawl_results: Results from the crawler
             
-        Returns:
-            List of discovered vulnerabilities
-        """
-        targets = self._prepare_targets(crawl_results)
-        base_url = self._get_base_url(crawl_results)
+    #     Returns:
+    #         List of discovered vulnerabilities
+    #     """
+    #     targets = self._prepare_targets(crawl_results)
+    #     base_url = self._get_base_url(crawl_results)
         
-        site_scanners = self._get_active_site_scanners()
-        param_scanners = self._get_active_param_scanners()
+    #     site_scanners = self._get_active_site_scanners()
+    #     param_scanners = self._get_active_param_scanners()
         
-        # Build task list
-        tasks = []
+    #     # Build task list
+    #     tasks = []
         
-        # Site-wide scan tasks
-        for name, scanner in site_scanners:
-            tasks.append((scanner, base_url, {}, "site"))
+    #     # Site-wide scan tasks
+    #     for name, scanner in site_scanners:
+    #         tasks.append((scanner, base_url, {}, "site"))
         
-        # Parameter scan tasks
-        for target in targets:
-            for name, scanner in param_scanners:
-                tasks.append((scanner, target['url'], target['params'], "param"))
+    #     # Parameter scan tasks
+    #     for target in targets:
+    #         for name, scanner in param_scanners:
+    #             tasks.append((scanner, target['url'], target['params'], "param"))
         
-        # Create connection pool
-        connector = aiohttp.TCPConnector(
-            ssl=False,
-            limit=self.max_concurrent_targets * 3,
-            limit_per_host=self.max_concurrent_targets
-        )
-        timeout = aiohttp.ClientTimeout(total=self.timeout * 2)
+    #     # Create connection pool
+    #     connector = aiohttp.TCPConnector(
+    #         ssl=False,
+    #         limit=self.max_concurrent_targets * 3,
+    #         limit_per_host=self.max_concurrent_targets
+    #     )
+    #     timeout = aiohttp.ClientTimeout(total=self.timeout * 2)
         
-        # Run with worker pool
-        worker_pool = ScanWorkerPool(num_workers=self.max_concurrent_scanners)
+    #     # Run with worker pool
+    #     worker_pool = ScanWorkerPool(num_workers=self.max_concurrent_scanners)
         
-        async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
-            all_vulnerabilities = await worker_pool.run(session, tasks)
+    #     async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+    #         all_vulnerabilities = await worker_pool.run(session, tasks)
         
-        # Deduplicate and sort
-        unique_vulns = self._deduplicate(all_vulnerabilities)
+    #     # Deduplicate and sort
+    #     unique_vulns = self._deduplicate(all_vulnerabilities)
         
-        severity_order = {
-            Severity.CRITICAL: 0,
-            Severity.HIGH: 1,
-            Severity.MEDIUM: 2,
-            Severity.LOW: 3,
-            Severity.INFO: 4
-        }
-        unique_vulns.sort(key=lambda v: severity_order.get(v.severity, 5))
+    #     severity_order = {
+    #         Severity.CRITICAL: 0,
+    #         Severity.HIGH: 1,
+    #         Severity.MEDIUM: 2,
+    #         Severity.LOW: 3,
+    #         Severity.INFO: 4
+    #     }
+    #     unique_vulns.sort(key=lambda v: severity_order.get(v.severity, 5))
         
-        return unique_vulns
+    #     return unique_vulns
     
     async def _sequential_scan(
         self,

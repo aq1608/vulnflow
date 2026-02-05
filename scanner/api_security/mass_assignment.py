@@ -26,7 +26,7 @@ class MassAssignmentScanner(BaseScanner):
     
     name="Mass Assignment Scanner",
     description="Detects mass assignment vulnerabilities in APIs",
-    owasp_category=OWASPCategory.A01_BROKEN_ACCESS_CONTROL
+    owasp_category=OWASPCategory.A08_DATA_INTEGRITY_FAILURES
 
     def __init__(self):
         
