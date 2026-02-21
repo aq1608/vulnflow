@@ -114,4 +114,4 @@ class TestAgainstJuiceShop:
         
         # Check for expected vulnerability types
         vuln_types = set(v.vuln_type for v in vulns)
-        print(f"Found vulnerability types: {vuln_types}")
+        print(f"Found potential vulnerability types: {vuln_types}")

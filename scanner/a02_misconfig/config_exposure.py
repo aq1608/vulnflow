@@ -19,6 +19,7 @@ CWE-526: Exposure of Sensitive Information Through Environmental Variables
 import asyncio
 import aiohttp
 import re
+import json
 from typing import List, Dict, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 
@@ -31,6 +32,9 @@ class ConfigExposureScanner(BaseScanner):
     name = "Configuration Exposure Scanner"
     description = "Detects exposed configuration files, secrets, and credentials"
     owasp_category = OWASPCategory.A02_SECURITY_MISCONFIGURATION
+    
+    # Minimum content length to consider a valid response
+    MIN_CONTENT_LENGTH = 10
     
     def __init__(self):
         super().__init__()
@@ -230,7 +234,7 @@ class ConfigExposureScanner(BaseScanner):
             (r'os\.environ\[[\'"]([A-Z_]+)[\'"]\]', 'Python Environment Variable'),
             (r'ENV\[[\'"]([A-Z_]+)[\'"]\]', 'Ruby Environment Variable'),
             (r'\$_ENV\[[\'"]([A-Z_]+)[\'"]\]', 'PHP Environment Variable'),
-            (r'getenv$[\'"]([A-Z_]+)[\'"]$', 'PHP getenv'),
+            (r'getenv\([\'"]([A-Z_]+)[\'"]\)', 'PHP getenv'),
         ]
     
     async def scan(
@@ -289,6 +293,15 @@ class ConfigExposureScanner(BaseScanner):
                     
                     content = await response.text()
                     content_type = response.headers.get('Content-Type', '')
+                    content_length = len(content.strip())
+                    
+                    # Skip empty responses (0 bytes)
+                    if content_length == 0:
+                        return None
+                    
+                    # Skip very small responses that are likely empty or error placeholders
+                    if content_length < self.MIN_CONTENT_LENGTH:
+                        return None
                     
                     # Validate it's actual config content
                     if not self._is_config_content(content, path, content_type):
@@ -299,10 +312,18 @@ class ConfigExposureScanner(BaseScanner):
                     
                     severity = Severity.CRITICAL if secrets_found else Severity.HIGH
                     
-                    evidence = f"Configuration file accessible: {description}"
+                    # Build detailed evidence with content preview
+                    content_preview = content # self._get_content_preview(content, max_length=300)
+                    
+                    evidence = f"Configuration file accessible: {description}\n"
+                    evidence += f"Content-Length: {content_length} bytes\n"
+                    evidence += f"Content-Type: {content_type}\n"
+                    
                     if secrets_found:
                         # Don't expose actual secrets in evidence
-                        evidence += f". Found {len(secrets_found)} potential secret(s): {', '.join([s[0] for s in secrets_found[:3]])}"
+                        evidence += f"Found {len(secrets_found)} potential secret(s): {', '.join([s[0] for s in secrets_found[:3]])}\n"
+                    
+                    evidence += f"\n--- Content Preview ---\n{content_preview}"
                     
                     return self.create_vulnerability(
                         vuln_type="Exposed Configuration File",
@@ -348,6 +369,10 @@ class ConfigExposureScanner(BaseScanner):
             
             content = await response.text()
             
+            # Skip empty content
+            if not content or len(content.strip()) < self.MIN_CONTENT_LENGTH:
+                return vulnerabilities
+            
             # Find secrets in page content
             secrets_found = self._find_secrets(content)
             
@@ -388,6 +413,10 @@ class ConfigExposureScanner(BaseScanner):
                 return vulnerabilities
             
             content = await response.text()
+            
+            # Skip empty content
+            if not content or len(content.strip()) < self.MIN_CONTENT_LENGTH:
+                return vulnerabilities
             
             # Find JavaScript file references
             js_pattern = r'<script[^>]+src=["\']([^"\']+\.js)["\']'
@@ -438,16 +467,21 @@ class ConfigExposureScanner(BaseScanner):
                     
                     if js_response and js_response.status == 200:
                         js_content = await js_response.text()
+                        
+                        # Skip empty JS files
+                        if not js_content or len(js_content.strip()) < self.MIN_CONTENT_LENGTH:
+                            continue
+                        
                         secrets = self._find_secrets(js_content)
                         
-                        for secret_type, severity in secrets[:2]:
+                        for secret_type, severity, matched_value in secrets[:2]:
                             vulnerabilities.append(self.create_vulnerability(
                                 vuln_type=f"Hardcoded Secret in JavaScript File: {secret_type}",
                                 severity=severity,
                                 url=js_url,
                                 parameter="JavaScript file",
                                 payload="N/A",
-                                evidence=f"Potential {secret_type} found in {js_file}",
+                                evidence=f"Potential {secret_type} found in {js_file}: {matched_value}",
                                 description=f"A potential {secret_type} was found in the JavaScript file '{js_file}'.",
                                 cwe_id="CWE-547",
                                 cvss_score=7.5,
@@ -480,6 +514,10 @@ class ConfigExposureScanner(BaseScanner):
                 return vulnerabilities
             
             content = await response.text()
+            
+            # Skip empty content
+            if not content or len(content.strip()) < self.MIN_CONTENT_LENGTH:
+                return vulnerabilities
             
             # Look for environment variable patterns
             sensitive_vars = [
@@ -518,13 +556,25 @@ class ConfigExposureScanner(BaseScanner):
     def _is_config_content(self, content: str, path: str, content_type: str) -> bool:
         """Verify the content is actual configuration data"""
         
+        # Reject empty or near-empty content
+        if not content or len(content.strip()) < self.MIN_CONTENT_LENGTH:
+            return False
+        
         # Skip if it looks like an error page
-        error_indicators = ['not found', '404', 'error', 'forbidden', '403', '401']
+        error_indicators = [
+            'not found', '404', 'error', 'forbidden', '403', '401',
+            'access denied', 'unauthorized', 'page not found',
+            'file not found', 'does not exist', 'cannot be found'
+        ]
         content_lower = content.lower()[:500]
         
         if any(indicator in content_lower for indicator in error_indicators):
             if len(content) < 2000:
                 return False
+        
+        # Skip generic HTML error pages
+        if self._is_generic_html_page(content):
+            return False
         
         # Check based on file type
         if path.endswith('.env') or '.env.' in path:
@@ -535,33 +585,148 @@ class ConfigExposureScanner(BaseScanner):
             # Should contain PHP code
             return '<?php' in content or '<?=' in content
         
+        if path.endswith('.py'):
+            # Should contain Python code patterns
+            python_patterns = ['import ', 'from ', 'def ', 'class ', '= {', '= [', '"""', "'''"]
+            return any(p in content for p in python_patterns)
+        
+        if path.endswith('.rb'):
+            # Should contain Ruby code patterns
+            return 'end' in content or '=>' in content or 'do |' in content
+        
         if path.endswith('.yml') or path.endswith('.yaml'):
             # Should contain YAML structure
-            return ':' in content and '\n' in content
+            if ':' not in content or '\n' not in content:
+                return False
+            # Check for YAML-like structure
+            return bool(re.search(r'^\s*[a-zA-Z_]+:\s*.+$', content, re.MULTILINE))
         
         if path.endswith('.json'):
             # Should start with { or [
-            return content.strip().startswith(('{', '['))
+            stripped = content.strip()
+            if not stripped.startswith(('{', '[')):
+                return False
+            # Verify it's valid JSON structure
+            try:
+                json.loads(stripped)
+                return True
+            except (json.JSONDecodeError, ValueError):
+                return False
         
         if path.endswith('.xml'):
-            return '<?xml' in content or '<' in content
+            return '<?xml' in content or ('<' in content and '>' in content and '</' in content)
         
         if path.endswith('.properties'):
-            return '=' in content
+            return '=' in content and bool(re.search(r'^[a-zA-Z._]+\s*=', content, re.MULTILINE))
         
-        if 'key' in path.lower() or 'id_rsa' in path or 'id_dsa' in path:
+        if path.endswith('.ini') or path.endswith('.cfg') or path.endswith('.conf'):
+            # Should have INI-like structure
+            return bool(re.search(r'^$$.+$$$', content, re.MULTILINE)) or '=' in content
+        
+        if 'key' in path.lower() or 'id_rsa' in path or 'id_dsa' in path or 'id_ecdsa' in path:
             return '-----BEGIN' in content or 'ssh-' in content
         
-        # Default: has meaningful content
+        if 'Dockerfile' in path:
+            dockerfile_keywords = ['FROM ', 'RUN ', 'COPY ', 'ENV ', 'WORKDIR ', 'CMD ', 'ENTRYPOINT ']
+            return any(kw in content for kw in dockerfile_keywords)
+        
+        if 'Jenkinsfile' in path:
+            return 'pipeline' in content or 'node' in content or 'stage' in content
+        
+        # Default: has meaningful content with config-like patterns
         return len(content.strip()) > 20 and ('=' in content or ':' in content)
     
-    def _find_secrets(self, content: str) -> List[Tuple[str, Severity]]:
-        """Find secrets in content"""
+    def _is_generic_html_page(self, content: str) -> bool:
+        """Check if content is a generic HTML page (not config data)"""
+        content_lower = content.lower().strip()
+        
+        # If it starts with HTML doctype or html tag, it's likely a web page, not config
+        if content_lower.startswith('<!doctype html') or content_lower.startswith('<html'):
+            # Unless it's a PHP file that outputs HTML (which would show PHP code if misconfigured)
+            if '<?php' not in content and '<?=' not in content:
+                return True
+        
+        # Check for common HTML page indicators
+        html_indicators = [
+            '<head>', '</head>', '<body>', '</body>',
+            '<title>', '</title>', '<meta ', '<link rel=',
+            '<div ', '<span ', '<header>', '<footer>',
+            '<nav>', '</nav>', '<main>', '</main>'
+        ]
+        indicator_count = sum(1 for ind in html_indicators if ind.lower() in content_lower)
+        
+        # If multiple HTML indicators, probably a web page
+        if indicator_count >= 3:
+            return True
+        
+        # Check for common CMS/framework error pages
+        cms_indicators = [
+            'wordpress', 'drupal', 'joomla', 'laravel',
+            'symfony', 'django', 'rails', 'express',
+            'apache', 'nginx', 'iis'
+        ]
+        
+        # If it looks like a styled error page from a framework
+        if any(cms in content_lower for cms in cms_indicators):
+            if '<html' in content_lower and indicator_count >= 2:
+                return True
+        
+        return False
+    
+    def _get_content_preview(self, content: str, max_length: int = 200) -> str:
+        """Get a sanitized preview of the content for evidence"""
+        if not content:
+            return "[Empty]"
+        
+        # Remove sensitive data patterns before showing preview
+        sanitized = content.strip()
+        
+        # Truncate if too long
+        if len(sanitized) > max_length:
+            sanitized = sanitized[:max_length] + "\n... [truncated]"
+        
+        # Mask potential passwords/secrets in preview
+        mask_patterns = [
+            (r'(password|passwd|pwd)\s*[=:]\s*["\']?([^\s"\']{0,3})[^\s"\']*', r'\1=\2***[MASKED]'),
+            (r'(secret|secret_key)\s*[=:]\s*["\']?([^\s"\']{0,3})[^\s"\']*', r'\1=\2***[MASKED]'),
+            (r'(api_?key|apikey)\s*[=:]\s*["\']?([^\s"\']{0,3})[^\s"\']*', r'\1=\2***[MASKED]'),
+            (r'(token|auth_token)\s*[=:]\s*["\']?([^\s"\']{0,3})[^\s"\']*', r'\1=\2***[MASKED]'),
+            (r'(access_key|secret_access)\s*[=:]\s*["\']?([^\s"\']{0,3})[^\s"\']*', r'\1=\2***[MASKED]'),
+            (r'(AKIA[0-9A-Z]{3})[0-9A-Z]{13}', r'\1***[MASKED]'),  # AWS Access Key
+            (r'(sk_live_[a-zA-Z0-9]{3})[a-zA-Z0-9]+', r'\1***[MASKED]'),  # Stripe Key
+            (r'(ghp_[a-zA-Z0-9]{3})[a-zA-Z0-9]+', r'\1***[MASKED]'),  # GitHub Token
+        ]
+        
+        for pattern, replacement in mask_patterns:
+            sanitized = re.sub(pattern, replacement, sanitized, flags=re.IGNORECASE)
+        
+        return sanitized
+    
+    # def _find_secrets(self, content: str) -> List[Tuple[str, Severity]]:
+    #     """Find secrets in content"""
+    #     secrets_found = []
+    #     seen_types = set()  # Avoid duplicate secret types
+        
+    #     for pattern, secret_type, severity in self.secret_patterns:
+    #         if secret_type not in seen_types and re.search(pattern, content):
+    #             secrets_found.append((secret_type, severity))
+    #             seen_types.add(secret_type)
+        
+    #     return secrets_found
+
+    def _find_secrets(self, content: str) -> List[Tuple[str, Severity, str]]:
+        """Find secrets in content, returning type, severity, and matched value"""
         secrets_found = []
+        seen_types = set()  # Avoid duplicate secret types
         
         for pattern, secret_type, severity in self.secret_patterns:
-            if re.search(pattern, content):
-                secrets_found.append((secret_type, severity))
+            if secret_type not in seen_types:
+                match = re.search(pattern, content)
+                if match:
+                    # Get the full match or the first group if available
+                    matched_value = match.group(1) if match.lastindex else match.group(0)
+                    secrets_found.append((secret_type, severity, matched_value))
+                    seen_types.add(secret_type)
         
         return secrets_found
     
@@ -571,20 +736,42 @@ class ConfigExposureScanner(BaseScanner):
 1. Block access to configuration files via web server configuration:
 
    Apache (.htaccess):
-   <FilesMatch ".(env|config|yml|yaml|json|ini|xml)$">
-        Order allow,deny
-        Deny from all
+   <FilesMatch "\.(env|config|yml|yaml|json|ini|xml|key|pem)$">
+       Order allow,deny
+       Deny from all
+   </FilesMatch>
 
-    Nginx:
-    location ~ /.(env|git|svn) {
-        deny all;
-        return 404;
-    }
+   Nginx:
+   location ~ /\.(env|git|svn|htaccess|htpasswd) {
+       deny all;
+       return 404;
+   }
+   
+   location ~* \.(yml|yaml|json|ini|xml|key|pem|conf|cfg)$ {
+       deny all;
+       return 404;
+   }
 
-2. Store sensitive configuration outside the web root
+2. Store sensitive configuration outside the web root directory
+
 3. Use environment variables instead of config files for secrets
-4. Implement proper secret management (HashiCorp Vault, AWS Secrets Manager, etc.)
-5. Never commit secrets to version control - use .gitignore
+
+4. Implement proper secret management solutions:
+   - HashiCorp Vault
+   - AWS Secrets Manager
+   - Azure Key Vault
+   - Google Cloud Secret Manager
+
+5. Never commit secrets to version control:
+   - Add sensitive files to .gitignore
+   - Use git-secrets or similar tools to prevent accidental commits
+   - Scan repositories for leaked secrets regularly
+
 6. Regularly rotate credentials and API keys
+
 7. Use different credentials for development, staging, and production
+
+8. Implement least privilege access for all credentials
+
+9. Monitor and alert on unauthorized access to configuration endpoints
 """

@@ -245,13 +245,13 @@ class XXEScanner(BaseScanner):
                         )
                         if vuln:
                             vulnerabilities.append(vuln)
-                            # Found vulnerability with this payload type, move to next
+                            # Found potential vulnerability with this payload type, move to next
                             break
                     except Exception:
                         continue
                 
                 if vulnerabilities:
-                    break  # Found vulnerability, no need to test more payloads
+                    break  # Found potential vulnerability, no need to test more payloads
         
         return vulnerabilities
     

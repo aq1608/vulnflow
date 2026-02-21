@@ -3,28 +3,14 @@
 VulnFlow Report Generator
 
 Generates security scan reports in HTML, JSON, and SARIF formats.
-Updated for OWASP Top 10 2025.
+Updated for OWASP Top 10 2025 with HTTP Traffic Capture (ZAP-style).
 """
 
 from typing import List, Dict, Optional
 from datetime import datetime
 import json
 import html
-from enum import Enum
-
-
-# OWASP 2025 Category Information for Reports
-"""
-VulnFlow Report Generator
-
-Generates security scan reports in HTML, JSON, and SARIF formats.
-Updated for OWASP Top 10 2025 with full CWE mappings.
-"""
-
-from typing import List, Dict, Optional
-from datetime import datetime
-import json
-import html
+import re
 from enum import Enum
 
 
@@ -34,7 +20,7 @@ OWASP_2025_CATEGORIES = {
         "id": "A01",
         "name": "Broken Access Control",
         "short": "Access Control",
-        "color": "#dc3545",  # Red
+        "color": "#dc3545",
         "description": "Failures in access control enforcement, allowing users to act outside intended permissions. Now includes SSRF.",
         "url": "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/",
         "key_cwes": ["CWE-200", "CWE-201", "CWE-352", "CWE-639", "CWE-862", "CWE-863", "CWE-918"],
@@ -45,7 +31,7 @@ OWASP_2025_CATEGORIES = {
         "id": "A02",
         "name": "Security Misconfiguration",
         "short": "Misconfiguration",
-        "color": "#fd7e14",  # Orange
+        "color": "#fd7e14",
         "description": "Missing security hardening, default credentials, overly permissive cloud settings, verbose errors.",
         "url": "https://owasp.org/Top10/2025/A02_2025-Security_Misconfiguration/",
         "key_cwes": ["CWE-16", "CWE-611", "CWE-489", "CWE-942", "CWE-1004"],
@@ -56,7 +42,7 @@ OWASP_2025_CATEGORIES = {
         "id": "A03",
         "name": "Software Supply Chain Failures",
         "short": "Supply Chain",
-        "color": "#e83e8c",  # Pink
+        "color": "#e83e8c",
         "description": "Vulnerabilities in dependencies, CI/CD pipelines, and software components. Expanded beyond just outdated components.",
         "url": "https://owasp.org/Top10/2025/A03_2025-Software_Supply_Chain_Failures/",
         "key_cwes": ["CWE-1104", "CWE-1395", "CWE-1329", "CWE-477"],
@@ -67,7 +53,7 @@ OWASP_2025_CATEGORIES = {
         "id": "A04",
         "name": "Cryptographic Failures",
         "short": "Crypto Failures",
-        "color": "#6f42c1",  # Purple
+        "color": "#6f42c1",
         "description": "Weak cryptography, missing encryption, poor key management, deprecated algorithms.",
         "url": "https://owasp.org/Top10/2025/A04_2025-Cryptographic_Failures/",
         "key_cwes": ["CWE-327", "CWE-331", "CWE-338", "CWE-326", "CWE-916"],
@@ -78,7 +64,7 @@ OWASP_2025_CATEGORIES = {
         "id": "A05",
         "name": "Injection",
         "short": "Injection",
-        "color": "#d63384",  # Magenta
+        "color": "#d63384",
         "description": "SQL, NoSQL, OS command, LDAP, XPath injection and XSS. Untrusted data sent to interpreters.",
         "url": "https://owasp.org/Top10/2025/A05_2025-Injection/",
         "key_cwes": ["CWE-79", "CWE-89", "CWE-78", "CWE-94", "CWE-917"],
@@ -89,7 +75,7 @@ OWASP_2025_CATEGORIES = {
         "id": "A06",
         "name": "Insecure Design",
         "short": "Insecure Design",
-        "color": "#20c997",  # Teal
+        "color": "#20c997",
         "description": "Missing or ineffective security controls, architectural flaws, business logic vulnerabilities.",
         "url": "https://owasp.org/Top10/2025/A06_2025-Insecure_Design/",
         "key_cwes": ["CWE-256", "CWE-269", "CWE-434", "CWE-501", "CWE-522"],
@@ -100,7 +86,7 @@ OWASP_2025_CATEGORIES = {
         "id": "A07",
         "name": "Authentication Failures",
         "short": "Auth Failures",
-        "color": "#0dcaf0",  # Cyan
+        "color": "#0dcaf0",
         "description": "Weaknesses in authentication, session management, credential handling, and identity verification.",
         "url": "https://owasp.org/Top10/2025/A07_2025-Authentication_Failures/",
         "key_cwes": ["CWE-259", "CWE-287", "CWE-384", "CWE-798", "CWE-1392"],
@@ -111,7 +97,7 @@ OWASP_2025_CATEGORIES = {
         "id": "A08",
         "name": "Software or Data Integrity Failures",
         "short": "Integrity Failures",
-        "color": "#198754",  # Green
+        "color": "#198754",
         "description": "Code and infrastructure without integrity verification, insecure deserialization, unsigned updates.",
         "url": "https://owasp.org/Top10/2025/A08_2025-Software_and_Data_Integrity_Failures/",
         "key_cwes": ["CWE-502", "CWE-829", "CWE-915", "CWE-494", "CWE-345"],
@@ -122,7 +108,7 @@ OWASP_2025_CATEGORIES = {
         "id": "A09",
         "name": "Security Logging and Alerting Failures",
         "short": "Logging Failures",
-        "color": "#6c757d",  # Gray
+        "color": "#6c757d",
         "description": "Insufficient logging, monitoring, and alerting. Failure to detect and respond to attacks.",
         "url": "https://owasp.org/Top10/2025/A09_2025-Security_Logging_and_Alerting_Failures/",
         "key_cwes": ["CWE-117", "CWE-223", "CWE-532", "CWE-778"],
@@ -133,7 +119,7 @@ OWASP_2025_CATEGORIES = {
         "id": "A10",
         "name": "Mishandling of Exceptional Conditions",
         "short": "Exceptional Conditions",
-        "color": "#ffc107",  # Yellow
+        "color": "#ffc107",
         "description": "Systems that fail open, improper error handling, resource exhaustion, unhandled exceptions.",
         "url": "https://owasp.org/Top10/2025/A10_2025-Mishandling_of_Exceptional_Conditions/",
         "key_cwes": ["CWE-209", "CWE-476", "CWE-636", "CWE-754", "CWE-755"],
@@ -144,7 +130,7 @@ OWASP_2025_CATEGORIES = {
         "id": "Other",
         "name": "Other",
         "short": "Other",
-        "color": "#adb5bd",  # Light gray
+        "color": "#adb5bd",
         "description": "Vulnerabilities not directly mapped to OWASP Top 10 2025",
         "url": "https://owasp.org/Top10/",
         "key_cwes": [],
@@ -156,112 +142,112 @@ OWASP_2025_CATEGORIES = {
 # Legacy OWASP 2021 to 2025 mapping for backward compatibility
 OWASP_2021_TO_2025_MAPPING = {
     "A01:2021 - Broken Access Control": "A01:2025 - Broken Access Control",
-    "A02:2021 - Cryptographic Failures": "A04:2025 - Cryptographic Failures",  # Moved to #4
-    "A03:2021 - Injection": "A05:2025 - Injection",  # Moved to #5
-    "A04:2021 - Insecure Design": "A06:2025 - Insecure Design",  # Moved to #6
-    "A05:2021 - Security Misconfiguration": "A02:2025 - Security Misconfiguration",  # Moved UP to #2
-    "A06:2021 - Vulnerable and Outdated Components": "A03:2025 - Software Supply Chain Failures",  # Renamed, #3
+    "A02:2021 - Cryptographic Failures": "A04:2025 - Cryptographic Failures",
+    "A03:2021 - Injection": "A05:2025 - Injection",
+    "A04:2021 - Insecure Design": "A06:2025 - Insecure Design",
+    "A05:2021 - Security Misconfiguration": "A02:2025 - Security Misconfiguration",
+    "A06:2021 - Vulnerable and Outdated Components": "A03:2025 - Software Supply Chain Failures",
     "A07:2021 - Identification and Authentication Failures": "A07:2025 - Authentication Failures",
     "A08:2021 - Software and Data Integrity Failures": "A08:2025 - Software or Data Integrity Failures",
     "A09:2021 - Security Logging and Monitoring Failures": "A09:2025 - Security Logging and Alerting Failures",
-    "A10:2021 - Server-Side Request Forgery": "A01:2025 - Broken Access Control",  # SSRF merged into A01
+    "A10:2021 - Server-Side Request Forgery": "A01:2025 - Broken Access Control",
 }
 
 # CWE to OWASP 2025 mapping for accurate categorization
 CWE_TO_OWASP_2025 = {
-    # A01 - Broken Access Control (40 CWEs)
-    "CWE-22": "A01:2025 - Broken Access Control",   # Path Traversal
-    "CWE-23": "A01:2025 - Broken Access Control",   # Relative Path Traversal
-    "CWE-200": "A01:2025 - Broken Access Control",  # Information Exposure
-    "CWE-201": "A01:2025 - Broken Access Control",  # Sensitive Info in Sent Data
-    "CWE-352": "A01:2025 - Broken Access Control",  # CSRF
-    "CWE-425": "A01:2025 - Broken Access Control",  # Forced Browsing
-    "CWE-601": "A01:2025 - Broken Access Control",  # Open Redirect
-    "CWE-639": "A01:2025 - Broken Access Control",  # Authorization Bypass
-    "CWE-862": "A01:2025 - Broken Access Control",  # Missing Authorization
-    "CWE-863": "A01:2025 - Broken Access Control",  # Incorrect Authorization
-    "CWE-918": "A01:2025 - Broken Access Control",  # SSRF (moved from A10:2021)
+    # A01 - Broken Access Control
+    "CWE-22": "A01:2025 - Broken Access Control",
+    "CWE-23": "A01:2025 - Broken Access Control",
+    "CWE-200": "A01:2025 - Broken Access Control",
+    "CWE-201": "A01:2025 - Broken Access Control",
+    "CWE-352": "A01:2025 - Broken Access Control",
+    "CWE-425": "A01:2025 - Broken Access Control",
+    "CWE-601": "A01:2025 - Broken Access Control",
+    "CWE-639": "A01:2025 - Broken Access Control",
+    "CWE-862": "A01:2025 - Broken Access Control",
+    "CWE-863": "A01:2025 - Broken Access Control",
+    "CWE-918": "A01:2025 - Broken Access Control",
     
-    # A02 - Security Misconfiguration (16 CWEs)
-    "CWE-16": "A02:2025 - Security Misconfiguration",   # Configuration
-    "CWE-489": "A02:2025 - Security Misconfiguration",  # Active Debug Code
-    "CWE-611": "A02:2025 - Security Misconfiguration",  # XXE
-    "CWE-614": "A02:2025 - Security Misconfiguration",  # Sensitive Cookie without Secure
-    "CWE-942": "A02:2025 - Security Misconfiguration",  # Permissive CORS
-    "CWE-1004": "A02:2025 - Security Misconfiguration", # Sensitive Cookie without HttpOnly
+    # A02 - Security Misconfiguration
+    "CWE-16": "A02:2025 - Security Misconfiguration",
+    "CWE-489": "A02:2025 - Security Misconfiguration",
+    "CWE-611": "A02:2025 - Security Misconfiguration",
+    "CWE-614": "A02:2025 - Security Misconfiguration",
+    "CWE-942": "A02:2025 - Security Misconfiguration",
+    "CWE-1004": "A02:2025 - Security Misconfiguration",
     
-    # A03 - Software Supply Chain Failures (6 CWEs)
-    "CWE-477": "A03:2025 - Software Supply Chain Failures",   # Obsolete Function
-    "CWE-1104": "A03:2025 - Software Supply Chain Failures",  # Unmaintained Component
-    "CWE-1329": "A03:2025 - Software Supply Chain Failures",  # Non-Updateable Component
-    "CWE-1395": "A03:2025 - Software Supply Chain Failures",  # Vulnerable Dependency
+    # A03 - Software Supply Chain Failures
+    "CWE-477": "A03:2025 - Software Supply Chain Failures",
+    "CWE-1104": "A03:2025 - Software Supply Chain Failures",
+    "CWE-1329": "A03:2025 - Software Supply Chain Failures",
+    "CWE-1395": "A03:2025 - Software Supply Chain Failures",
     
-    # A04 - Cryptographic Failures (32 CWEs)
-    "CWE-261": "A04:2025 - Cryptographic Failures",  # Weak Password Encoding
-    "CWE-319": "A04:2025 - Cryptographic Failures",  # Cleartext Transmission
-    "CWE-326": "A04:2025 - Cryptographic Failures",  # Inadequate Encryption
-    "CWE-327": "A04:2025 - Cryptographic Failures",  # Broken Crypto Algorithm
-    "CWE-328": "A04:2025 - Cryptographic Failures",  # Reversible Hash
-    "CWE-330": "A04:2025 - Cryptographic Failures",  # Insufficient Randomness
-    "CWE-331": "A04:2025 - Cryptographic Failures",  # Insufficient Entropy
-    "CWE-338": "A04:2025 - Cryptographic Failures",  # Weak PRNG
-    "CWE-916": "A04:2025 - Cryptographic Failures",  # Weak Password Hash
+    # A04 - Cryptographic Failures
+    "CWE-261": "A04:2025 - Cryptographic Failures",
+    "CWE-319": "A04:2025 - Cryptographic Failures",
+    "CWE-326": "A04:2025 - Cryptographic Failures",
+    "CWE-327": "A04:2025 - Cryptographic Failures",
+    "CWE-328": "A04:2025 - Cryptographic Failures",
+    "CWE-330": "A04:2025 - Cryptographic Failures",
+    "CWE-331": "A04:2025 - Cryptographic Failures",
+    "CWE-338": "A04:2025 - Cryptographic Failures",
+    "CWE-916": "A04:2025 - Cryptographic Failures",
     
-    # A05 - Injection (37 CWEs)
-    "CWE-77": "A05:2025 - Injection",   # Command Injection
-    "CWE-78": "A05:2025 - Injection",   # OS Command Injection
-    "CWE-79": "A05:2025 - Injection",   # XSS
-    "CWE-89": "A05:2025 - Injection",   # SQL Injection
-    "CWE-90": "A05:2025 - Injection",   # LDAP Injection
-    "CWE-94": "A05:2025 - Injection",   # Code Injection
-    "CWE-643": "A05:2025 - Injection",  # XPath Injection
-    "CWE-917": "A05:2025 - Injection",  # Expression Language Injection
+    # A05 - Injection
+    "CWE-77": "A05:2025 - Injection",
+    "CWE-78": "A05:2025 - Injection",
+    "CWE-79": "A05:2025 - Injection",
+    "CWE-89": "A05:2025 - Injection",
+    "CWE-90": "A05:2025 - Injection",
+    "CWE-94": "A05:2025 - Injection",
+    "CWE-643": "A05:2025 - Injection",
+    "CWE-917": "A05:2025 - Injection",
     
-    # A06 - Insecure Design (39 CWEs)
-    "CWE-256": "A06:2025 - Insecure Design",  # Unprotected Credentials
-    "CWE-269": "A06:2025 - Insecure Design",  # Improper Privilege Management
-    "CWE-434": "A06:2025 - Insecure Design",  # Unrestricted File Upload
-    "CWE-501": "A06:2025 - Insecure Design",  # Trust Boundary Violation
-    "CWE-522": "A06:2025 - Insecure Design",  # Insufficiently Protected Credentials
-    "CWE-799": "A06:2025 - Insecure Design",  # Improper Interaction Frequency Control
+    # A06 - Insecure Design
+    "CWE-256": "A06:2025 - Insecure Design",
+    "CWE-269": "A06:2025 - Insecure Design",
+    "CWE-434": "A06:2025 - Insecure Design",
+    "CWE-501": "A06:2025 - Insecure Design",
+    "CWE-522": "A06:2025 - Insecure Design",
+    "CWE-799": "A06:2025 - Insecure Design",
     
-    # A07 - Authentication Failures (36 CWEs)
-    "CWE-259": "A07:2025 - Authentication Failures",  # Hardcoded Password
-    "CWE-287": "A07:2025 - Authentication Failures",  # Improper Authentication
-    "CWE-307": "A07:2025 - Authentication Failures",  # Excessive Auth Attempts
-    "CWE-384": "A07:2025 - Authentication Failures",  # Session Fixation
-    "CWE-613": "A07:2025 - Authentication Failures",  # Insufficient Session Expiration
-    "CWE-798": "A07:2025 - Authentication Failures",  # Hardcoded Credentials
-    "CWE-1392": "A07:2025 - Authentication Failures", # Default Credentials
+    # A07 - Authentication Failures
+    "CWE-259": "A07:2025 - Authentication Failures",
+    "CWE-287": "A07:2025 - Authentication Failures",
+    "CWE-307": "A07:2025 - Authentication Failures",
+    "CWE-384": "A07:2025 - Authentication Failures",
+    "CWE-613": "A07:2025 - Authentication Failures",
+    "CWE-798": "A07:2025 - Authentication Failures",
+    "CWE-1392": "A07:2025 - Authentication Failures",
     
-    # A08 - Software or Data Integrity Failures (14 CWEs)
-    "CWE-345": "A08:2025 - Software or Data Integrity Failures",  # Insufficient Verification
-    "CWE-494": "A08:2025 - Software or Data Integrity Failures",  # Download Without Integrity
-    "CWE-502": "A08:2025 - Software or Data Integrity Failures",  # Deserialization
-    "CWE-829": "A08:2025 - Software or Data Integrity Failures",  # Untrusted Functionality
-    "CWE-915": "A08:2025 - Software or Data Integrity Failures",  # Mass Assignment
+    # A08 - Software or Data Integrity Failures
+    "CWE-345": "A08:2025 - Software or Data Integrity Failures",
+    "CWE-494": "A08:2025 - Software or Data Integrity Failures",
+    "CWE-502": "A08:2025 - Software or Data Integrity Failures",
+    "CWE-829": "A08:2025 - Software or Data Integrity Failures",
+    "CWE-915": "A08:2025 - Software or Data Integrity Failures",
     
-    # A09 - Security Logging and Alerting Failures (5 CWEs)
-    "CWE-117": "A09:2025 - Security Logging and Alerting Failures",  # Log Injection
-    "CWE-223": "A09:2025 - Security Logging and Alerting Failures",  # Omission of Security Info
-    "CWE-532": "A09:2025 - Security Logging and Alerting Failures",  # Sensitive Info in Logs
-    "CWE-778": "A09:2025 - Security Logging and Alerting Failures",  # Insufficient Logging
+    # A09 - Security Logging and Alerting Failures
+    "CWE-117": "A09:2025 - Security Logging and Alerting Failures",
+    "CWE-223": "A09:2025 - Security Logging and Alerting Failures",
+    "CWE-532": "A09:2025 - Security Logging and Alerting Failures",
+    "CWE-778": "A09:2025 - Security Logging and Alerting Failures",
     
-    # A10 - Mishandling of Exceptional Conditions (24 CWEs) - NEW
-    "CWE-209": "A10:2025 - Mishandling of Exceptional Conditions",  # Error Message Info Exposure
-    "CWE-248": "A10:2025 - Mishandling of Exceptional Conditions",  # Uncaught Exception
-    "CWE-252": "A10:2025 - Mishandling of Exceptional Conditions",  # Unchecked Return Value
-    "CWE-391": "A10:2025 - Mishandling of Exceptional Conditions",  # Unchecked Error Condition
-    "CWE-476": "A10:2025 - Mishandling of Exceptional Conditions",  # NULL Pointer Dereference
-    "CWE-636": "A10:2025 - Mishandling of Exceptional Conditions",  # Failing Open
-    "CWE-754": "A10:2025 - Mishandling of Exceptional Conditions",  # Improper Check for Unusual Conditions
-    "CWE-755": "A10:2025 - Mishandling of Exceptional Conditions",  # Improper Handling of Exceptions
-    "CWE-756": "A10:2025 - Mishandling of Exceptional Conditions",  # Missing Custom Error Page
+    # A10 - Mishandling of Exceptional Conditions
+    "CWE-209": "A10:2025 - Mishandling of Exceptional Conditions",
+    "CWE-248": "A10:2025 - Mishandling of Exceptional Conditions",
+    "CWE-252": "A10:2025 - Mishandling of Exceptional Conditions",
+    "CWE-391": "A10:2025 - Mishandling of Exceptional Conditions",
+    "CWE-476": "A10:2025 - Mishandling of Exceptional Conditions",
+    "CWE-636": "A10:2025 - Mishandling of Exceptional Conditions",
+    "CWE-754": "A10:2025 - Mishandling of Exceptional Conditions",
+    "CWE-755": "A10:2025 - Mishandling of Exceptional Conditions",
+    "CWE-756": "A10:2025 - Mishandling of Exceptional Conditions",
 }
 
 
 class ReportGenerator:
-    """Generate security scan reports in various formats"""
+    """Generate security scan reports in various formats with HTTP traffic capture"""
     
     def __init__(self):
         self.owasp_categories = OWASP_2025_CATEGORIES
@@ -273,15 +259,12 @@ class ReportGenerator:
         if not category_value:
             return "Other"
         
-        # If it's already a 2025 category, return as-is
         if "2025" in category_value:
             return category_value
         
-        # If it's a 2021 category, map it to 2025
         if "2021" in category_value:
             return self.legacy_mapping.get(category_value, "Other")
         
-        # Try to match by partial name
         category_lower = category_value.lower()
         for cat_key in self.owasp_categories:
             if self.owasp_categories[cat_key]["name"].lower() in category_lower:
@@ -294,7 +277,6 @@ class ReportGenerator:
         if not cwe_id:
             return "Other"
         
-        # Normalize CWE format
         cwe_normalized = cwe_id.upper()
         if not cwe_normalized.startswith("CWE-"):
             cwe_normalized = f"CWE-{cwe_normalized}"
@@ -323,13 +305,11 @@ class ReportGenerator:
             }
         
         for vuln in vulns:
-            # Try multiple methods to determine OWASP category
             owasp_cat = getattr(vuln, 'owasp_category', None)
             
             if owasp_cat:
                 cat_value = owasp_cat.value if hasattr(owasp_cat, 'value') else str(owasp_cat)
             else:
-                # Try to infer from CWE
                 cwe_id = getattr(vuln, 'cwe_id', None)
                 if cwe_id:
                     cat_value = self._get_owasp_from_cwe(cwe_id)
@@ -345,16 +325,619 @@ class ReportGenerator:
                 if severity in owasp_summary[normalized_cat]:
                     owasp_summary[normalized_cat][severity] += 1
         
-        # Filter out categories with no findings
         return {k: v for k, v in owasp_summary.items() if v["count"] > 0}
+    
+    def _get_css_styles(self) -> str:
+        """Get all CSS styles including HTTP traffic display"""
+        return '''
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                background: #f5f5f5; color: #333; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); 
+                   color: white; padding: 40px; border-radius: 10px; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header .owasp-badge { display: inline-block; background: rgba(255,255,255,0.2); 
+                               padding: 5px 12px; border-radius: 15px; font-size: 0.85em; 
+                               margin-top: 10px; }
         
+        /* Severity Summary */
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+                    gap: 20px; margin-bottom: 30px; }
+        .summary-card { background: white; padding: 20px; border-radius: 10px; 
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center;
+                        cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .summary-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+        .summary-card.critical { border-left: 4px solid #dc3545; }
+        .summary-card.high { border-left: 4px solid #fd7e14; }
+        .summary-card.medium { border-left: 4px solid #ffc107; }
+        .summary-card.low { border-left: 4px solid #17a2b8; }
+        .summary-card .count { font-size: 2.5em; font-weight: bold; }
+        
+        /* OWASP Summary Section */
+        .owasp-summary { background: white; padding: 25px; border-radius: 10px; 
+                         box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        .owasp-summary h2 { margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .owasp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
+        .owasp-card { background: #f8f9fa; padding: 15px; border-radius: 8px; 
+                      border-left: 4px solid var(--owasp-color, #6c757d);
+                      cursor: pointer; transition: all 0.2s; }
+        .owasp-card:hover { background: #e9ecef; transform: translateX(5px); }
+        .owasp-card-header { display: flex; justify-content: space-between; align-items: center; }
+        .owasp-card-id { font-weight: bold; font-size: 1.1em; color: var(--owasp-color, #333); }
+        .owasp-card-count { background: var(--owasp-color, #6c757d); color: white; 
+                            padding: 3px 10px; border-radius: 12px; font-size: 0.9em; font-weight: bold; }
+        .owasp-card-name { font-size: 0.9em; color: #666; margin-top: 5px; }
+        .owasp-card-breakdown { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .owasp-card-breakdown span { font-size: 0.75em; padding: 2px 8px; border-radius: 10px; }
+        .owasp-card-breakdown .critical { background: #dc3545; color: white; }
+        .owasp-card-breakdown .high { background: #fd7e14; color: white; }
+        .owasp-card-breakdown .medium { background: #ffc107; color: #333; }
+        .owasp-card-breakdown .low { background: #17a2b8; color: white; }
+        
+        /* Controls Section */
+        .controls { background: white; padding: 20px; border-radius: 10px; 
+                     box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px;
+                     display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+        .search-box { flex: 1; min-width: 250px; }
+        .search-box input { width: 100%; padding: 10px 15px; border: 2px solid #e0e0e0;
+                            border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
+        .search-box input:focus { outline: none; border-color: #1a1a2e; }
+        .filter-group { display: flex; flex-direction: column; gap: 8px; }
+        .filter-label { font-size: 12px; color: #666; font-weight: 600; text-transform: uppercase; }
+        .filter-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+        .filter-btn { padding: 8px 16px; border: 2px solid #e0e0e0; background: white;
+                      border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 500;
+                      transition: all 0.2s; }
+        .filter-btn:hover { background: #f0f0f0; }
+        .filter-btn.active { background: #1a1a2e; color: white; border-color: #1a1a2e; }
+        .filter-btn.critical.active { background: #dc3545; border-color: #dc3545; }
+        .filter-btn.high.active { background: #fd7e14; border-color: #fd7e14; }
+        .filter-btn.medium.active { background: #ffc107; border-color: #ffc107; color: #333; }
+        .filter-btn.low.active { background: #17a2b8; border-color: #17a2b8; }
+        
+        /* OWASP Filter Dropdown */
+        .owasp-filter { position: relative; }
+        .owasp-filter-btn { padding: 8px 16px; border: 2px solid #e0e0e0; background: white;
+                            border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 500;
+                            display: flex; align-items: center; gap: 5px; }
+        .owasp-filter-btn:hover { background: #f0f0f0; }
+        .owasp-dropdown { display: none; position: absolute; top: 100%; left: 0; 
+                          background: white; border: 1px solid #e0e0e0; border-radius: 8px;
+                          box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 100; min-width: 250px;
+                          margin-top: 5px; max-height: 300px; overflow-y: auto; }
+        .owasp-dropdown.show { display: block; }
+        .owasp-dropdown-item { padding: 10px 15px; cursor: pointer; border-left: 3px solid transparent;
+                               display: flex; justify-content: space-between; align-items: center; }
+        .owasp-dropdown-item:hover { background: #f8f9fa; }
+        .owasp-dropdown-item.selected { background: #e3f2fd; border-left-color: #1a1a2e; }
+        
+        /* Bulk Actions */
+        .bulk-actions { display: flex; gap: 10px; margin-left: auto; }
+        .bulk-btn { padding: 8px 12px; background: #f8f9fa; border: 1px solid #dee2e6;
+                    border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+        .bulk-btn:hover { background: #e9ecef; }
+        
+        /* Vulnerability Cards */
+        .vuln-card { background: white; border-radius: 10px; 
+                      margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                      overflow: hidden; transition: all 0.3s ease; }
+        .vuln-card.hidden { display: none; }
+        .vuln-card-header { display: flex; justify-content: space-between; align-items: center; 
+                            padding: 20px; cursor: pointer; user-select: none;
+                            transition: background 0.2s; }
+        .vuln-card-header:hover { background: #f8f9fa; }
+        .vuln-card-header h3 { display: flex; align-items: center; gap: 10px; font-size: 1em; 
+                               flex: 1; flex-wrap: wrap; }
+        .vuln-card-header .toggle-icon { transition: transform 0.3s; color: #666; }
+        .vuln-card.expanded .toggle-icon { transform: rotate(180deg); }
+        .vuln-card-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out;
+                          padding: 0 20px; }
+        .vuln-card.expanded .vuln-card-body { max-height: 5000px; padding: 0 20px 20px; }
+        
+        .severity { padding: 5px 15px; border-radius: 20px; color: white; font-weight: bold; 
+                    text-transform: uppercase; font-size: 0.75em; white-space: nowrap; }
+        .severity.critical { background: #dc3545; }
+        .severity.high { background: #fd7e14; }
+        .severity.medium { background: #ffc107; color: #333; }
+        .severity.low { background: #17a2b8; }
+        .severity.info { background: #6c757d; }
+        
+        /* OWASP Badge */
+        .owasp-badge-small { padding: 3px 10px; border-radius: 12px; font-size: 0.7em; 
+                       font-weight: 600; white-space: nowrap; background: #f0f0f0; 
+                       color: #333; border: 1px solid #ddd; }
+        .owasp-badge-small a { color: inherit; text-decoration: none; }
+        .owasp-badge-small a:hover { text-decoration: underline; }
+        
+        .detail { margin: 12px 0; }
+        .detail-label { font-weight: bold; color: #666; font-size: 0.9em; }
+        .code { background: #f8f9fa; padding: 15px; border-radius: 5px; 
+                 font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; 
+                 overflow-x: auto; margin: 8px 0; font-size: 13px;
+                 border: 1px solid #e9ecef; white-space: pre-wrap; word-wrap: break-word; }
+        
+        /* Payload Box */
+        .payload-box { background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;
+                       padding: 10px 15px; font-family: monospace; font-size: 13px;
+                       margin: 8px 0; white-space: pre-wrap; word-wrap: break-word; }
+        
+        /* OWASP Detail Box */
+        .owasp-detail-box { background: #f0f7ff; border: 1px solid #cce5ff; 
+                            border-radius: 8px; padding: 12px; margin: 12px 0;
+                            display: flex; align-items: flex-start; gap: 12px; }
+        .owasp-detail-box .owasp-icon { font-size: 1.5em; }
+        .owasp-detail-box .owasp-info { flex: 1; }
+        .owasp-detail-box .owasp-title { font-weight: bold; color: #004085; }
+        .owasp-detail-box .owasp-desc { font-size: 0.85em; color: #666; margin-top: 3px; }
+        .owasp-detail-box a { color: #004085; }
+        
+        /* ============================================ */
+        /* HTTP TRAFFIC SECTION - ZAP STYLE            */
+        /* ============================================ */
+        .http-traffic-section { margin-top: 15px; border: 1px solid #ddd; border-radius: 8px;
+                                overflow: hidden; }
+        .http-toggle { background: #f8f9fa; padding: 12px 15px; cursor: pointer;
+                       display: flex; align-items: center; gap: 10px;
+                       border-bottom: 1px solid #ddd; user-select: none;
+                       transition: background 0.2s; }
+        .http-toggle:hover { background: #e9ecef; }
+        .http-toggle .toggle-icon { font-size: 12px; transition: transform 0.2s; }
+        .http-toggle .toggle-icon.expanded { transform: rotate(90deg); }
+        .http-toggle-hint { color: #6c757d; font-size: 12px; margin-left: auto; }
+        .http-toggle-title { font-weight: 600; color: #333; }
+        .http-content { display: none; background: #1e1e1e; }
+        .http-content.show { display: block; }
+        .http-panels { display: flex; flex-direction: column; }
+        
+        /* Request/Response Panels */
+        .http-panel { border-bottom: 1px solid #333; }
+        .http-panel:last-child { border-bottom: none; }
+        .http-panel-header { background: #2d2d2d; padding: 10px 15px;
+                             border-bottom: 1px solid #404040;
+                             display: flex; justify-content: space-between; align-items: center; }
+        .http-label { color: #fff; font-weight: 600; font-size: 13px;
+                      display: flex; align-items: center; gap: 8px; }
+        .http-label .icon { font-size: 14px; }
+        .http-label.request { color: #61afef; }
+        .http-label.response { color: #98c379; }
+        .http-meta { color: #666; font-size: 11px; }
+        
+        .http-code { margin: 0; padding: 15px; font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                     font-size: 12px; line-height: 1.6; color: #d4d4d4; white-space: pre-wrap;
+                     word-wrap: break-word; background: #1e1e1e; max-height: 400px; overflow: auto; }
+        
+        /* HTTP Syntax Highlighting */
+        .http-method { color: #c678dd; font-weight: bold; }
+        .http-url { color: #61afef; }
+        .http-version { color: #56b6c2; }
+        .http-status-ok { color: #98c379; font-weight: bold; }
+        .http-status-redirect { color: #e5c07b; font-weight: bold; }
+        .http-status-error { color: #e06c75; font-weight: bold; }
+        .http-header-name { color: #e5c07b; }
+        .http-header-value { color: #98c379; }
+        .http-header-colon { color: #abb2bf; }
+        
+        /* Payload Highlighting */
+        .payload-highlight { background: #e6db74; color: #1e1e1e; padding: 1px 4px;
+                            border-radius: 3px; font-weight: bold; }
+        .payload-marker { background: #ff6b6b; color: #fff; padding: 1px 4px;
+                          border-radius: 3px; font-weight: bold; font-size: 10px; }
+        
+        /* Evidence Context */
+        .evidence-context-section { margin-top: 15px; }
+        .evidence-context-header { font-weight: bold; color: #666; font-size: 0.9em; margin-bottom: 8px;
+                                   display: flex; align-items: center; gap: 8px; }
+        .evidence-context-header .icon { color: #ffc107; }
+        .evidence-context { background: #2d2d2d; color: #d4d4d4; border-radius: 6px;
+                           padding: 15px; font-family: monospace; font-size: 12px;
+                           white-space: pre-wrap; word-wrap: break-word;
+                           max-height: 300px; overflow: auto; border: 1px solid #404040; }
+        .evidence-context .line-number { color: #666; margin-right: 10px; user-select: none;
+                                         display: inline-block; min-width: 30px; text-align: right; }
+        .evidence-context .match-line { background: rgba(255, 255, 0, 0.15); display: block;
+                                        margin: 0 -15px; padding: 2px 15px; }
+        
+        /* Remediation Section */
+        .remediation-section { margin-top: 15px; border-top: 1px solid #e9ecef; padding-top: 15px; }
+        .remediation-header { display: flex; align-items: center; justify-content: space-between;
+                              cursor: pointer; padding: 10px; background: #e8f5e9; 
+                              border-radius: 8px; margin-bottom: 10px; }
+        .remediation-header:hover { background: #c8e6c9; }
+        .remediation-header h4 { color: #2e7d32; display: flex; align-items: center; gap: 8px; 
+                                 font-size: 0.95em; }
+        .remediation-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .remediation-section.expanded .remediation-content { max-height: 2000px; }
+        .remediation-text { background: #f1f8e9; padding: 15px; border-radius: 8px;
+                            font-size: 0.9em; line-height: 1.7; }
+        .remediation-text pre { background: #263238; color: #aed581; padding: 15px;
+                                border-radius: 6px; overflow-x: auto; margin: 10px 0;
+                                font-size: 12px; }
+        .remediation-text code { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                                 background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px; }
+        .remediation-text ol, .remediation-text ul { margin-left: 20px; margin-top: 10px; }
+        .remediation-text li { margin: 5px 0; }
+        
+        .no-vulns { text-align: center; padding: 60px; background: white; 
+                     border-radius: 10px; color: #28a745; }
+        .no-vulns h2 { font-size: 2em; }
+        
+        .results-info { padding: 10px 0; color: #666; font-size: 14px; }
+        
+        /* Copy Button */
+        .copy-btn { background: #404040; color: #aaa; border: none; padding: 4px 8px;
+                    border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s; }
+        .copy-btn:hover { background: #505050; color: #fff; }
+        .copy-btn.copied { background: #28a745; color: #fff; }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .vuln-card { animation: fadeIn 0.3s ease-out; }
+        
+        /* Print styles */
+        @media print {
+            .controls, .bulk-actions, .toggle-icon, .owasp-summary, .http-toggle,
+            .copy-btn { display: none !important; }
+            .vuln-card-body { max-height: none !important; padding: 20px !important; }
+            .remediation-content { max-height: none !important; }
+            .http-content { display: block !important; max-height: none !important; }
+            .header { background: #1a1a2e !important; -webkit-print-color-adjust: exact; }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .controls { flex-direction: column; }
+            .filter-group { width: 100%; }
+            .bulk-actions { width: 100%; justify-content: center; }
+            .http-panels { flex-direction: column; }
+        }
+        '''
+    
+    def _get_javascript(self) -> str:
+        """Get all JavaScript for interactivity"""
+        return '''
+        let currentFilter = 'all';
+        let currentOWASPFilter = 'all';
+        
+        function toggleCard(card) {
+            card.classList.toggle('expanded');
+        }
+        
+        function toggleRemediation(id) {
+            const section = document.getElementById(id);
+            section.classList.toggle('expanded');
+            event.stopPropagation();
+        }
+        
+        function toggleHttpTraffic(element) {
+            event.stopPropagation();
+            const content = element.nextElementSibling;
+            const icon = element.querySelector('.toggle-icon');
+            
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                icon.classList.remove('expanded');
+            } else {
+                content.classList.add('show');
+                icon.classList.add('expanded');
+            }
+        }
+        
+        function expandAll() {
+            document.querySelectorAll('.vuln-card:not(.hidden)').forEach(card => {
+                card.classList.add('expanded');
+            });
+        }
+        
+        function collapseAll() {
+            document.querySelectorAll('.vuln-card').forEach(card => {
+                card.classList.remove('expanded');
+            });
+            document.querySelectorAll('.remediation-section').forEach(section => {
+                section.classList.remove('expanded');
+            });
+            document.querySelectorAll('.http-content').forEach(content => {
+                content.classList.remove('show');
+            });
+            document.querySelectorAll('.http-toggle .toggle-icon').forEach(icon => {
+                icon.classList.remove('expanded');
+            });
+        }
+        
+        function setFilter(severity) {
+            currentFilter = severity;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.filter === severity) {
+                    btn.classList.add('active');
+                }
+            });
+            filterVulnerabilities();
+        }
+        
+        function filterBySeverity(severity) {
+            setFilter(severity);
+        }
+        
+        function toggleOWASPDropdown(event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById('owaspDropdown');
+            dropdown.classList.toggle('show');
+        }
+        
+        function setOWASPFilter(category) {
+            currentOWASPFilter = category;
+            document.querySelectorAll('.owasp-dropdown-item').forEach(item => {
+                item.classList.remove('selected');
+                if (item.dataset.owasp === category) {
+                    item.classList.add('selected');
+                }
+            });
+            
+            const btn = document.getElementById('owaspFilterText');
+            if (category === 'all') {
+                btn.textContent = 'All Categories';
+            } else {
+                const parts = category.split(' - ');
+                btn.textContent = parts.length > 1 ? parts[0] : category;
+            }
+            
+            document.getElementById('owaspDropdown').classList.remove('show');
+            filterVulnerabilities();
+        }
+        
+        function filterByOWASP(category) {
+            setOWASPFilter(category);
+        }
+        
+        function filterVulnerabilities() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('.vuln-card');
+            let visibleCount = 0;
+            
+            cards.forEach(card => {
+                const cardSeverity = card.dataset.severity;
+                const cardOWASP = card.dataset.owasp;
+                const searchable = card.dataset.searchable;
+                
+                const matchesSeverity = currentFilter === 'all' || cardSeverity === currentFilter;
+                const matchesOWASP = currentOWASPFilter === 'all' || cardOWASP === currentOWASPFilter;
+                const matchesSearch = searchTerm === '' || searchable.includes(searchTerm);
+                
+                if (matchesSeverity && matchesOWASP && matchesSearch) {
+                    card.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+            
+            const totalCount = cards.length;
+            const resultsText = visibleCount === totalCount 
+                ? `Showing all ${totalCount} vulnerabilities`
+                : `Showing ${visibleCount} of ${totalCount} vulnerabilities`;
+            document.getElementById('resultsCount').textContent = resultsText;
+        }
+        
+        function copyToClipboard(elementId, buttonElement) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                buttonElement.textContent = '✓ Copied';
+                buttonElement.classList.add('copied');
+                setTimeout(() => {
+                    buttonElement.textContent = '📋 Copy';
+                    buttonElement.classList.remove('copied');
+                }, 2000);
+            });
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.owasp-filter')) {
+                document.getElementById('owaspDropdown')?.classList.remove('show');
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'e' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
+                expandAll();
+            }
+            if (e.key === 'c' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
+                collapseAll();
+            }
+            if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+                e.preventDefault();
+                document.getElementById('searchInput').focus();
+            }
+            if (e.key === 'Escape') {
+                document.getElementById('searchInput').value = '';
+                setFilter('all');
+                setOWASPFilter('all');
+            }
+        });
+        '''
+    
+    def _format_http_with_highlighting(self, http_text: str, payload: str = None) -> str:
+        """Format HTTP text with syntax highlighting and payload marking"""
+        if not http_text:
+            return ""
+        
+        # Escape HTML first
+        escaped = html.escape(http_text)
+        
+        # Highlight HTTP method and URL (request line)
+        escaped = re.sub(
+            r'^(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH|TRACE)\s+([^\s]+)\s+(HTTP/[\d.]+)',
+            r'<span class="http-method">\1</span> <span class="http-url">\2</span> <span class="http-version">\3</span>',
+            escaped,
+            flags=re.MULTILINE
+        )
+        
+        # Highlight HTTP response status line
+        def highlight_status(match):
+            version = match.group(1)
+            status = match.group(2)
+            reason = match.group(3)
+            status_int = int(status)
+            
+            if status_int < 300:
+                status_class = "http-status-ok"
+            elif status_int < 400:
+                status_class = "http-status-redirect"
+            else:
+                status_class = "http-status-error"
+            
+            return f'<span class="http-version">{version}</span> <span class="{status_class}">{status}</span> {reason}'
+        
+        escaped = re.sub(
+            r'^(HTTP/[\d.]+)\s+(\d{3})\s+(.*)$',
+            highlight_status,
+            escaped,
+            flags=re.MULTILINE
+        )
+        
+        # Highlight headers
+        escaped = re.sub(
+            r'^([A-Za-z][A-Za-z0-9\-]*):\s*(.*)$',
+            r'<span class="http-header-name">\1</span><span class="http-header-colon">:</span> <span class="http-header-value">\2</span>',
+            escaped,
+            flags=re.MULTILINE
+        )
+        
+        # Highlight the payload if provided
+        if payload:
+            escaped_payload = html.escape(payload)
+            if escaped_payload in escaped:
+                escaped = escaped.replace(
+                    escaped_payload,
+                    f'<span class="payload-highlight">{escaped_payload}</span>'
+                )
+        
+        return escaped
+    
+    def _build_http_section(self, vuln, vuln_id: int) -> str:
+        """Build the HTTP request/response section like ZAP"""
+        request = getattr(vuln, 'request', None)
+        response = getattr(vuln, 'response', None)
+        
+        if not request and not response:
+            return ""
+        
+        payload = getattr(vuln, 'payload', None)
+        
+        section_html = f'''
+        <div class="http-traffic-section">
+            <div class="http-toggle" onclick="toggleHttpTraffic(this)">
+                <span class="toggle-icon">▶</span>
+                <span class="http-toggle-title">🔍 HTTP Traffic</span>
+                <span class="http-toggle-hint">Click to view request/response</span>
+            </div>
+            <div class="http-content">
+                <div class="http-panels">
+        '''
+        
+        if request:
+            request_id = f"request-{vuln_id}"
+            formatted_request = self._format_http_with_highlighting(request, payload)
+            section_html += f'''
+                    <div class="http-panel">
+                        <div class="http-panel-header">
+                            <span class="http-label request"><span class="icon">📤</span> Request</span>
+                            <button class="copy-btn" onclick="copyToClipboard('{request_id}', this)">📋 Copy</button>
+                        </div>
+                        <pre class="http-code" id="{request_id}">{formatted_request}</pre>
+                    </div>
+            '''
+        
+        if response:
+            response_id = f"response-{vuln_id}"
+            formatted_response = self._format_http_with_highlighting(response, payload)
+            
+            # Calculate response size
+            response_size = len(response)
+            size_display = f"{response_size} bytes" if response_size < 1024 else f"{response_size/1024:.1f} KB"
+            
+            section_html += f'''
+                    <div class="http-panel">
+                        <div class="http-panel-header">
+                            <span class="http-label response"><span class="icon">📥</span> Response</span>
+                            <span class="http-meta">{size_display}</span>
+                            <button class="copy-btn" onclick="copyToClipboard('{response_id}', this)">📋 Copy</button>
+                        </div>
+                        <pre class="http-code" id="{response_id}">{formatted_response}</pre>
+                    </div>
+            '''
+        
+        section_html += '''
+                </div>
+            </div>
+        </div>
+        '''
+        
+        return section_html
+    
+    def _build_evidence_context_section(self, vuln) -> str:
+        """Build evidence context section with payload highlighting"""
+        evidence_context = getattr(vuln, 'evidence_context', None)
+        
+        if not evidence_context:
+            return ""
+        
+        # Process the context to highlight payload markers
+        context_html = html.escape(evidence_context)
+        
+        # Replace our markers with HTML highlighting
+        context_html = context_html.replace(
+            '&gt;&gt;&gt;PAYLOAD_START&gt;&gt;&gt;',
+            '<span class="payload-highlight">'
+        )
+        context_html = context_html.replace(
+            '&lt;&lt;&lt;PAYLOAD_END&lt;&lt;&lt;',
+            '</span>'
+        )
+        
+        # Also highlight 【】markers
+        payload = getattr(vuln, 'payload', None)
+        if payload:
+            escaped_payload = html.escape(payload)
+            context_html = context_html.replace(
+                f'【{escaped_payload}】',
+                f'<span class="payload-highlight">{escaped_payload}</span>'
+            )
+        
+        # Highlight [SOURCE: ...] and [SINK: ...] markers
+        context_html = re.sub(
+            r'\[SOURCE:\s*([^\]]+)\]',
+            r'<span class="payload-marker">SOURCE</span> <span class="payload-highlight">\1</span>',
+            context_html
+        )
+        context_html = re.sub(
+            r'\[SINK:\s*([^\]]+)\]',
+            r'<span class="payload-marker">SINK</span> <span class="payload-highlight">\1</span>',
+            context_html
+        )
+        
+        return f'''
+        <div class="evidence-context-section">
+            <div class="evidence-context-header">
+                <span class="icon">🎯</span> Evidence Context
+            </div>
+            <div class="evidence-context">{context_html}</div>
+        </div>
+        '''
+    
     def generate_html_report(self, scan_results: Dict) -> str:
-        """Generate HTML report"""
+        """Generate HTML report with HTTP traffic capture"""
         summary = self._generate_summary(scan_results)
         owasp_summary = self._generate_owasp_summary(scan_results)
         vulns = scan_results.get("vulnerabilities", [])
         
-        # Escape HTML in user-provided data
         target = html.escape(str(scan_results.get("target", "Unknown")))
         
         html_content = f'''<!DOCTYPE html>
@@ -364,193 +947,7 @@ class ReportGenerator:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VulnFlow Security Report</title>
     <style>
-        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                background: #f5f5f5; color: #333; line-height: 1.6; }}
-        .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; }}
-        .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); 
-                   color: white; padding: 40px; border-radius: 10px; margin-bottom: 30px; }}
-        .header h1 {{ font-size: 2.5em; margin-bottom: 10px; }}
-        .header .owasp-badge {{ display: inline-block; background: rgba(255,255,255,0.2); 
-                               padding: 5px 12px; border-radius: 15px; font-size: 0.85em; 
-                               margin-top: 10px; }}
-        
-        /* Severity Summary */
-        .summary {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
-                    gap: 20px; margin-bottom: 30px; }}
-        .summary-card {{ background: white; padding: 20px; border-radius: 10px; 
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center;
-                        cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }}
-        .summary-card:hover {{ transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.15); }}
-        .summary-card.active {{ ring: 2px solid currentColor; }}
-        .summary-card.critical {{ border-left: 4px solid #dc3545; }}
-        .summary-card.high {{ border-left: 4px solid #fd7e14; }}
-        .summary-card.medium {{ border-left: 4px solid #ffc107; }}
-        .summary-card.low {{ border-left: 4px solid #17a2b8; }}
-        .summary-card .count {{ font-size: 2.5em; font-weight: bold; }}
-        
-        /* OWASP Summary Section */
-        .owasp-summary {{ background: white; padding: 25px; border-radius: 10px; 
-                         box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }}
-        .owasp-summary h2 {{ margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }}
-        .owasp-summary h2 img {{ width: 30px; height: 30px; }}
-        .owasp-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }}
-        .owasp-card {{ background: #f8f9fa; padding: 15px; border-radius: 8px; 
-                      border-left: 4px solid var(--owasp-color, #6c757d);
-                      cursor: pointer; transition: all 0.2s; }}
-        .owasp-card:hover {{ background: #e9ecef; transform: translateX(5px); }}
-        .owasp-card-header {{ display: flex; justify-content: space-between; align-items: center; }}
-        .owasp-card-id {{ font-weight: bold; font-size: 1.1em; color: var(--owasp-color, #333); }}
-        .owasp-card-count {{ background: var(--owasp-color, #6c757d); color: white; 
-                            padding: 3px 10px; border-radius: 12px; font-size: 0.9em; font-weight: bold; }}
-        .owasp-card-name {{ font-size: 0.9em; color: #666; margin-top: 5px; }}
-        .owasp-card-breakdown {{ display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }}
-        .owasp-card-breakdown span {{ font-size: 0.75em; padding: 2px 8px; border-radius: 10px; }}
-        .owasp-card-breakdown .critical {{ background: #dc3545; color: white; }}
-        .owasp-card-breakdown .high {{ background: #fd7e14; color: white; }}
-        .owasp-card-breakdown .medium {{ background: #ffc107; color: #333; }}
-        .owasp-card-breakdown .low {{ background: #17a2b8; color: white; }}
-        
-        /* Controls Section */
-        .controls {{ background: white; padding: 20px; border-radius: 10px; 
-                     box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px;
-                     display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }}
-        .search-box {{ flex: 1; min-width: 250px; }}
-        .search-box input {{ width: 100%; padding: 10px 15px; border: 2px solid #e0e0e0;
-                            border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }}
-        .search-box input:focus {{ outline: none; border-color: #1a1a2e; }}
-        .filter-group {{ display: flex; flex-direction: column; gap: 8px; }}
-        .filter-label {{ font-size: 12px; color: #666; font-weight: 600; text-transform: uppercase; }}
-        .filter-buttons {{ display: flex; gap: 8px; flex-wrap: wrap; }}
-        .filter-btn {{ padding: 8px 16px; border: 2px solid #e0e0e0; background: white;
-                      border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 500;
-                      transition: all 0.2s; }}
-        .filter-btn:hover {{ background: #f0f0f0; }}
-        .filter-btn.active {{ background: #1a1a2e; color: white; border-color: #1a1a2e; }}
-        .filter-btn.critical.active {{ background: #dc3545; border-color: #dc3545; }}
-        .filter-btn.high.active {{ background: #fd7e14; border-color: #fd7e14; }}
-        .filter-btn.medium.active {{ background: #ffc107; border-color: #ffc107; color: #333; }}
-        .filter-btn.low.active {{ background: #17a2b8; border-color: #17a2b8; }}
-        
-        /* OWASP Filter Dropdown */
-        .owasp-filter {{ position: relative; }}
-        .owasp-filter-btn {{ padding: 8px 16px; border: 2px solid #e0e0e0; background: white;
-                            border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 500;
-                            display: flex; align-items: center; gap: 5px; }}
-        .owasp-filter-btn:hover {{ background: #f0f0f0; }}
-        .owasp-filter-btn.active {{ background: #1a1a2e; color: white; border-color: #1a1a2e; }}
-        .owasp-dropdown {{ display: none; position: absolute; top: 100%; left: 0; 
-                          background: white; border: 1px solid #e0e0e0; border-radius: 8px;
-                          box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 100; min-width: 250px;
-                          margin-top: 5px; max-height: 300px; overflow-y: auto; }}
-        .owasp-dropdown.show {{ display: block; }}
-        .owasp-dropdown-item {{ padding: 10px 15px; cursor: pointer; border-left: 3px solid transparent;
-                               display: flex; justify-content: space-between; align-items: center; }}
-        .owasp-dropdown-item:hover {{ background: #f8f9fa; }}
-        .owasp-dropdown-item.selected {{ background: #e3f2fd; border-left-color: #1a1a2e; }}
-        
-        /* Expand/Collapse All */
-        .bulk-actions {{ display: flex; gap: 10px; margin-left: auto; }}
-        .bulk-btn {{ padding: 8px 12px; background: #f8f9fa; border: 1px solid #dee2e6;
-                    border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }}
-        .bulk-btn:hover {{ background: #e9ecef; }}
-        
-        /* Vulnerability Cards */
-        .vuln-card {{ background: white; border-radius: 10px; 
-                      margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                      overflow: hidden; transition: all 0.3s ease; }}
-        .vuln-card.hidden {{ display: none; }}
-        .vuln-card-header {{ display: flex; justify-content: space-between; align-items: center; 
-                            padding: 20px; cursor: pointer; user-select: none;
-                            transition: background 0.2s; }}
-        .vuln-card-header:hover {{ background: #f8f9fa; }}
-        .vuln-card-header h3 {{ display: flex; align-items: center; gap: 10px; font-size: 1em; 
-                               flex: 1; flex-wrap: wrap; }}
-        .vuln-card-header .toggle-icon {{ transition: transform 0.3s; color: #666; }}
-        .vuln-card.expanded .toggle-icon {{ transform: rotate(180deg); }}
-        .vuln-card-body {{ max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out;
-                          padding: 0 20px; }}
-        .vuln-card.expanded .vuln-card-body {{ max-height: 2000px; padding: 0 20px 20px; }}
-        
-        .severity {{ padding: 5px 15px; border-radius: 20px; color: white; font-weight: bold; 
-                    text-transform: uppercase; font-size: 0.75em; white-space: nowrap; }}
-        .severity.critical {{ background: #dc3545; }}
-        .severity.high {{ background: #fd7e14; }}
-        .severity.medium {{ background: #ffc107; color: #333; }}
-        .severity.low {{ background: #17a2b8; }}
-        .severity.info {{ background: #6c757d; }}
-        
-        /* OWASP Badge in vuln card */
-        .owasp-badge {{ padding: 3px 10px; border-radius: 12px; font-size: 0.7em; 
-                       font-weight: 600; white-space: nowrap; background: #f0f0f0; 
-                       color: #333; border: 1px solid #ddd; }}
-        .owasp-badge a {{ color: inherit; text-decoration: none; }}
-        .owasp-badge a:hover {{ text-decoration: underline; }}
-        
-        .detail {{ margin: 12px 0; }}
-        .detail-label {{ font-weight: bold; color: #666; font-size: 0.9em; }}
-        .code {{ background: #f8f9fa; padding: 15px; border-radius: 5px; 
-                 font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; 
-                 overflow-x: auto; margin: 8px 0; font-size: 13px;
-                 border: 1px solid #e9ecef; }}
-        
-        /* OWASP Detail Box */
-        .owasp-detail-box {{ background: #f0f7ff; border: 1px solid #cce5ff; 
-                            border-radius: 8px; padding: 12px; margin: 12px 0;
-                            display: flex; align-items: flex-start; gap: 12px; }}
-        .owasp-detail-box .owasp-icon {{ font-size: 1.5em; }}
-        .owasp-detail-box .owasp-info {{ flex: 1; }}
-        .owasp-detail-box .owasp-title {{ font-weight: bold; color: #004085; }}
-        .owasp-detail-box .owasp-desc {{ font-size: 0.85em; color: #666; margin-top: 3px; }}
-        .owasp-detail-box a {{ color: #004085; }}
-        
-        /* Remediation Section */
-        .remediation-section {{ margin-top: 15px; border-top: 1px solid #e9ecef; padding-top: 15px; }}
-        .remediation-header {{ display: flex; align-items: center; justify-content: space-between;
-                              cursor: pointer; padding: 10px; background: #e8f5e9; 
-                              border-radius: 8px; margin-bottom: 10px; }}
-        .remediation-header:hover {{ background: #c8e6c9; }}
-        .remediation-header h4 {{ color: #2e7d32; display: flex; align-items: center; gap: 8px; 
-                                 font-size: 0.95em; }}
-        .remediation-content {{ max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }}
-        .remediation-section.expanded .remediation-content {{ max-height: 2000px; }}
-        .remediation-text {{ background: #f1f8e9; padding: 15px; border-radius: 8px;
-                            font-size: 0.9em; line-height: 1.7; }}
-        .remediation-text pre {{ background: #263238; color: #aed581; padding: 15px;
-                                border-radius: 6px; overflow-x: auto; margin: 10px 0;
-                                font-size: 12px; }}
-        .remediation-text code {{ font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; }}
-        .remediation-text ol, .remediation-text ul {{ margin-left: 20px; margin-top: 10px; }}
-        .remediation-text li {{ margin: 5px 0; }}
-        
-        .no-vulns {{ text-align: center; padding: 60px; background: white; 
-                     border-radius: 10px; color: #28a745; }}
-        .no-vulns h2 {{ font-size: 2em; }}
-        
-        /* Results count */
-        .results-info {{ padding: 10px 0; color: #666; font-size: 14px; }}
-        
-        /* Animations */
-        @keyframes fadeIn {{
-            from {{ opacity: 0; transform: translateY(10px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
-        }}
-        .vuln-card {{ animation: fadeIn 0.3s ease-out; }}
-        
-        /* Print styles */
-        @media print {{
-            .controls, .bulk-actions, .toggle-icon, .owasp-summary {{ display: none !important; }}
-            .vuln-card-body {{ max-height: none !important; padding: 20px !important; }}
-            .remediation-content {{ max-height: none !important; }}
-            .header {{ background: #1a1a2e !important; -webkit-print-color-adjust: exact; }}
-        }}
-        
-        /* Responsive */
-        @media (max-width: 768px) {{
-            .controls {{ flex-direction: column; }}
-            .filter-group {{ width: 100%; }}
-            .bulk-actions {{ width: 100%; justify-content: center; }}
-        }}
+        {self._get_css_styles()}
     </style>
 </head>
 <body>
@@ -584,7 +981,7 @@ class ReportGenerator:
         </div>
 '''
         
-        # Add OWASP Summary Section
+        # OWASP Summary Section
         if owasp_summary:
             html_content += '''
         <div class="owasp-summary">
@@ -619,7 +1016,7 @@ class ReportGenerator:
 '''
         
         if vulns:
-            # Build OWASP filter dropdown options
+            # OWASP filter dropdown options
             owasp_options = '<div class="owasp-dropdown-item" data-owasp="all" onclick="setOWASPFilter(\'all\')">All Categories</div>'
             for cat_key in sorted(owasp_summary.keys()):
                 cat_info = self.owasp_categories.get(cat_key, {})
@@ -699,13 +1096,19 @@ class ReportGenerator:
                 owasp_info = self._get_owasp_category_info(owasp_cat_value)
                 normalized_owasp = self._normalize_owasp_category(owasp_cat_value)
                 
+                # Build HTTP traffic section
+                http_section = self._build_http_section(vuln, i)
+                
+                # Build evidence context section
+                evidence_context_section = self._build_evidence_context_section(vuln)
+                
                 html_content += f'''
         <div class="vuln-card" data-severity="{severity}" data-owasp="{html.escape(normalized_owasp)}" 
              data-searchable="{html.escape(vuln.vuln_type.lower())} {html.escape(vuln.url.lower())} {html.escape(vuln.parameter.lower() if vuln.parameter else '')} {html.escape(owasp_info['name'].lower())}">
             <div class="vuln-card-header" onclick="toggleCard(this.parentElement)">
                 <h3>
                     <span>#{i} {html.escape(vuln.vuln_type)}</span>
-                    <span class="owasp-badge" style="background: {owasp_info['color']}20; border-color: {owasp_info['color']}; color: {owasp_info['color']}">
+                    <span class="owasp-badge-small" style="background: {owasp_info['color']}20; border-color: {owasp_info['color']}; color: {owasp_info['color']}">
                         {owasp_info['id']}
                     </span>
                 </h3>
@@ -724,21 +1127,23 @@ class ReportGenerator:
                         <div class="owasp-desc">{html.escape(owasp_info['description'])}</div>
                     </div>
                 </div>
+                
                 <div class="detail">
-                    <span class="detail-label">URL:</span> {html.escape(vuln.url)}
+                    <span class="detail-label">URL:</span> 
+                    <a href="{html.escape(vuln.url)}" target="_blank" style="color: #1976d2; word-break: break-all;">{html.escape(vuln.url)}</a>
                 </div>
 '''
                 if vuln.parameter:
                     html_content += f'''
                 <div class="detail">
-                    <span class="detail-label">Parameter:</span> {html.escape(vuln.parameter)}
+                    <span class="detail-label">Parameter:</span> <code>{html.escape(vuln.parameter)}</code>
                 </div>
 '''
                 if vuln.payload:
                     html_content += f'''
                 <div class="detail">
                     <span class="detail-label">Payload:</span>
-                    <div class="code">{html.escape(vuln.payload)}</div>
+                    <div class="payload-box">{html.escape(vuln.payload)}</div>
                 </div>
 '''
                 html_content += f'''
@@ -746,19 +1151,43 @@ class ReportGenerator:
                     <span class="detail-label">Evidence:</span>
                     <div class="code">{html.escape(vuln.evidence)}</div>
                 </div>
+'''
+                
+                # Add evidence context if available
+                if evidence_context_section:
+                    html_content += evidence_context_section
+                
+                # Add HTTP traffic section
+                if http_section:
+                    html_content += http_section
+                
+                html_content += f'''
                 <div class="detail">
-                    <span class="detail-label">Description:</span> {html.escape(vuln.description)}
+                    <span class="detail-label">Description:</span>
+                    <p style="margin-top: 5px;">{self._format_description_html(vuln.description)}</p>
                 </div>
 '''
                 if vuln.cwe_id:
+                    cwe_num = vuln.cwe_id.replace('CWE-', '')
                     html_content += f'''
                 <div class="detail">
                     <span class="detail-label">CWE:</span> 
-                    <a href="https://cwe.mitre.org/data/definitions/{vuln.cwe_id.replace('CWE-', '')}.html" 
+                    <a href="https://cwe.mitre.org/data/definitions/{cwe_num}.html" 
                        target="_blank" style="color: #1976d2;">{html.escape(vuln.cwe_id)}</a>
                 </div>
 '''
-                # Add remediation section if available
+                
+                cvss_score = getattr(vuln, 'cvss_score', None)
+                if cvss_score:
+                    cvss_color = self._get_cvss_color(cvss_score)
+                    html_content += f'''
+                <div class="detail">
+                    <span class="detail-label">CVSS Score:</span> 
+                    <span style="color: {cvss_color}; font-weight: bold;">{cvss_score}</span>
+                </div>
+'''
+                
+                # Remediation section
                 if remediation:
                     formatted_remediation = self._format_remediation_html(remediation)
                     html_content += f'''
@@ -774,6 +1203,24 @@ class ReportGenerator:
                     </div>
                 </div>
 '''
+                
+                # References section
+                references = getattr(vuln, 'references', None)
+                if references and len(references) > 0:
+                    html_content += '''
+                <div class="detail" style="margin-top: 15px;">
+                    <span class="detail-label">References:</span>
+                    <ul style="margin-top: 5px; margin-left: 20px;">
+'''
+                    for ref in references[:5]:  # Limit to 5 references
+                        html_content += f'''
+                        <li><a href="{html.escape(ref)}" target="_blank" style="color: #1976d2; font-size: 0.9em;">{html.escape(ref[:80])}{'...' if len(ref) > 80 else ''}</a></li>
+'''
+                    html_content += '''
+                    </ul>
+                </div>
+'''
+                
                 html_content += '''
             </div>
         </div>
@@ -784,158 +1231,48 @@ class ReportGenerator:
         </div>
 '''
         
-        # Add JavaScript for interactivity
-        html_content += '''
+        # Add JavaScript
+        html_content += f'''
     </div>
     
     <script>
-        let currentFilter = 'all';
-        let currentOWASPFilter = 'all';
-        
-        function toggleCard(card) {
-            card.classList.toggle('expanded');
-        }
-        
-        function toggleRemediation(id) {
-            const section = document.getElementById(id);
-            section.classList.toggle('expanded');
-            event.stopPropagation();
-        }
-        
-        function expandAll() {
-            document.querySelectorAll('.vuln-card:not(.hidden)').forEach(card => {
-                card.classList.add('expanded');
-            });
-        }
-        
-        function collapseAll() {
-            document.querySelectorAll('.vuln-card').forEach(card => {
-                card.classList.remove('expanded');
-            });
-            document.querySelectorAll('.remediation-section').forEach(section => {
-                section.classList.remove('expanded');
-            });
-        }
-        
-        function setFilter(severity) {
-            currentFilter = severity;
-            
-            // Update button states
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.dataset.filter === severity) {
-                    btn.classList.add('active');
-                }
-            });
-            
-            filterVulnerabilities();
-        }
-        
-        function filterBySeverity(severity) {
-            setFilter(severity);
-        }
-        
-        function toggleOWASPDropdown(event) {
-            event.stopPropagation();
-            const dropdown = document.getElementById('owaspDropdown');
-            dropdown.classList.toggle('show');
-        }
-        
-        function setOWASPFilter(category) {
-            currentOWASPFilter = category;
-            
-            // Update dropdown items
-            document.querySelectorAll('.owasp-dropdown-item').forEach(item => {
-                item.classList.remove('selected');
-                if (item.dataset.owasp === category) {
-                    item.classList.add('selected');
-                }
-            });
-            
-            // Update button text
-            const btn = document.getElementById('owaspFilterText');
-            if (category === 'all') {
-                btn.textContent = 'All Categories';
-            } else {
-                // Extract short name from category
-                const parts = category.split(' - ');
-                btn.textContent = parts.length > 1 ? parts[0] : category;
-            }
-            
-            // Close dropdown
-            document.getElementById('owaspDropdown').classList.remove('show');
-            
-            filterVulnerabilities();
-        }
-        
-        function filterByOWASP(category) {
-            setOWASPFilter(category);
-        }
-        
-        function filterVulnerabilities() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const cards = document.querySelectorAll('.vuln-card');
-            let visibleCount = 0;
-            
-            cards.forEach(card => {
-                const cardSeverity = card.dataset.severity;
-                const cardOWASP = card.dataset.owasp;
-                const searchable = card.dataset.searchable;
-                
-                const matchesSeverity = currentFilter === 'all' || cardSeverity === currentFilter;
-                const matchesOWASP = currentOWASPFilter === 'all' || cardOWASP === currentOWASPFilter;
-                const matchesSearch = searchTerm === '' || searchable.includes(searchTerm);
-                
-                if (matchesSeverity && matchesOWASP && matchesSearch) {
-                    card.classList.remove('hidden');
-                    visibleCount++;
-                } else {
-                    card.classList.add('hidden');
-                }
-            });
-            
-            // Update results count
-            const totalCount = cards.length;
-            const resultsText = visibleCount === totalCount 
-                ? `Showing all ${totalCount} vulnerabilities`
-                : `Showing ${visibleCount} of ${totalCount} vulnerabilities`;
-            document.getElementById('resultsCount').textContent = resultsText;
-        }
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.owasp-filter')) {
-                document.getElementById('owaspDropdown').classList.remove('show');
-            }
-        });
-        
-        // Keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            // Press 'e' to expand all
-            if (e.key === 'e' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
-                expandAll();
-            }
-            // Press 'c' to collapse all
-            if (e.key === 'c' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT') {
-                collapseAll();
-            }
-            // Press '/' to focus search
-            if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
-                e.preventDefault();
-                document.getElementById('searchInput').focus();
-            }
-            // Press Escape to clear search and filters
-            if (e.key === 'Escape') {
-                document.getElementById('searchInput').value = '';
-                setFilter('all');
-                setOWASPFilter('all');
-            }
-        });
+        {self._get_javascript()}
     </script>
 </body>
 </html>'''
         
         return html_content
+    
+    def _format_description_html(self, description: str) -> str:
+        """Format description with basic markdown support"""
+        if not description:
+            return ""
+        
+        text = html.escape(description)
+        
+        # Convert **bold** to <strong>
+        text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
+        
+        # Convert `code` to <code>
+        text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
+        
+        # Convert newlines to <br>
+        text = text.replace('\n', '<br>')
+        
+        return text
+    
+    def _get_cvss_color(self, cvss_score: float) -> str:
+        """Get color based on CVSS score"""
+        if cvss_score >= 9.0:
+            return "#dc3545"  # Critical - Red
+        elif cvss_score >= 7.0:
+            return "#fd7e14"  # High - Orange
+        elif cvss_score >= 4.0:
+            return "#ffc107"  # Medium - Yellow
+        elif cvss_score >= 0.1:
+            return "#17a2b8"  # Low - Blue
+        else:
+            return "#6c757d"  # Info - Gray
     
     def _format_remediation_html(self, remediation: str) -> str:
         """Format remediation text as HTML with proper code highlighting"""
@@ -945,9 +1282,7 @@ class ReportGenerator:
         # Escape HTML first
         text = html.escape(remediation.strip())
         
-        # Handle code blocks (```python ... ```)
-        import re
-        
+        # Handle code blocks (```language ... ```)
         def replace_code_block(match):
             lang = match.group(1) or ''
             code = match.group(2)
@@ -958,32 +1293,51 @@ class ReportGenerator:
         # Handle inline code (`code`)
         text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
         
+        # Handle **bold**
+        text = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', text)
+        
         # Convert numbered lists
         lines = text.split('\n')
         in_list = False
+        in_ul = False
         result = []
         
         for line in lines:
+            stripped = line.strip()
+            
             # Check for numbered list item
-            numbered_match = re.match(r'^(\d+)\.\s+(.+)$', line.strip())
+            numbered_match = re.match(r'^(\d+)\.\s+(.+)$', stripped)
+            bullet_match = re.match(r'^[-*]\s+(.+)$', stripped)
+            
             if numbered_match:
+                if in_ul:
+                    result.append('</ul>')
+                    in_ul = False
                 if not in_list:
                     result.append('<ol>')
                     in_list = True
                 result.append(f'<li>{numbered_match.group(2)}</li>')
+            elif bullet_match:
+                if in_list:
+                    result.append('</ol>')
+                    in_list = False
+                if not in_ul:
+                    result.append('<ul>')
+                    in_ul = True
+                result.append(f'<li>{bullet_match.group(1)}</li>')
             else:
-                if in_list and line.strip() == '':
+                if in_list:
                     result.append('</ol>')
                     in_list = False
-                elif in_list and not line.strip().startswith('<pre>'):
-                    result.append('</ol>')
-                    in_list = False
-                    result.append(line)
-                else:
-                    result.append(line)
+                if in_ul:
+                    result.append('</ul>')
+                    in_ul = False
+                result.append(line)
         
         if in_list:
             result.append('</ol>')
+        if in_ul:
+            result.append('</ul>')
         
         text = '\n'.join(result)
         
@@ -997,7 +1351,7 @@ class ReportGenerator:
         return text
     
     def generate_json_report(self, scan_results: Dict) -> str:
-        """Generate JSON report for CI/CD integration"""
+        """Generate JSON report for CI/CD integration with HTTP capture"""
         summary = self._generate_summary(scan_results)
         owasp_summary = self._generate_owasp_summary(scan_results)
         
@@ -1006,7 +1360,9 @@ class ReportGenerator:
                 "timestamp": datetime.now().isoformat(),
                 "target": scan_results.get("target", "Unknown"),
                 "scanner_version": "2.0.0",
-                "owasp_version": "2025"
+                "owasp_version": "2025",
+                "pages_scanned": scan_results.get("pages_scanned", 0),
+                "forms_tested": scan_results.get("forms_tested", 0)
             },
             "summary": summary,
             "owasp_summary": {
@@ -1027,7 +1383,6 @@ class ReportGenerator:
         for vuln in scan_results.get("vulnerabilities", []):
             severity = vuln.severity.value if hasattr(vuln.severity, 'value') else str(vuln.severity)
             
-            # Get OWASP category
             owasp_cat = getattr(vuln, 'owasp_category', None)
             if owasp_cat:
                 owasp_cat_value = owasp_cat.value if hasattr(owasp_cat, 'value') else str(owasp_cat)
@@ -1037,7 +1392,7 @@ class ReportGenerator:
             normalized_owasp = self._normalize_owasp_category(owasp_cat_value)
             owasp_info = self._get_owasp_category_info(owasp_cat_value)
             
-            report["findings"].append({
+            finding = {
                 "type": vuln.vuln_type,
                 "severity": severity,
                 "url": vuln.url,
@@ -1046,15 +1401,33 @@ class ReportGenerator:
                 "evidence": vuln.evidence,
                 "description": vuln.description,
                 "cwe_id": vuln.cwe_id,
-                "cvss_score": vuln.cvss_score,
+                "cvss_score": getattr(vuln, 'cvss_score', None),
                 "owasp": {
                     "category": normalized_owasp,
                     "id": owasp_info["id"],
                     "name": owasp_info["name"],
                     "url": owasp_info["url"]
                 },
-                "remediation": getattr(vuln, 'remediation', None)
-            })
+                "remediation": getattr(vuln, 'remediation', None),
+                "references": getattr(vuln, 'references', [])
+            }
+            
+            # Add HTTP capture if available
+            request = getattr(vuln, 'request', None)
+            response = getattr(vuln, 'response', None)
+            
+            if request or response:
+                finding["http_traffic"] = {
+                    "request": request,
+                    "response": response[:10000] if response and len(response) > 10000 else response  # Limit response size
+                }
+            
+            # Add evidence context if available
+            evidence_context = getattr(vuln, 'evidence_context', None)
+            if evidence_context:
+                finding["evidence_context"] = evidence_context
+            
+            report["findings"].append(finding)
         
         report["exit_code"] = self._determine_exit_code(scan_results)
         
@@ -1068,13 +1441,13 @@ class ReportGenerator:
         rule_ids = {}
         
         for vuln in scan_results.get("vulnerabilities", []):
-            # Create rule if not exists
             rule_id = vuln.vuln_type.replace(" ", "_").lower()
+            rule_id = re.sub(r'[^a-z0-9_]', '', rule_id)
+            
             if rule_id not in rule_ids:
                 rule_ids[rule_id] = len(rules)
                 severity = vuln.severity.value if hasattr(vuln.severity, 'value') else str(vuln.severity)
                 
-                # Get OWASP category
                 owasp_cat = getattr(vuln, 'owasp_category', None)
                 if owasp_cat:
                     owasp_cat_value = owasp_cat.value if hasattr(owasp_cat, 'value') else str(owasp_cat)
@@ -1088,7 +1461,7 @@ class ReportGenerator:
                     "id": rule_id,
                     "name": vuln.vuln_type,
                     "shortDescription": {"text": vuln.vuln_type},
-                    "fullDescription": {"text": vuln.description},
+                    "fullDescription": {"text": vuln.description[:500] if len(vuln.description) > 500 else vuln.description},
                     "defaultConfiguration": {
                         "level": self._severity_to_sarif_level(severity)
                     },
@@ -1096,11 +1469,19 @@ class ReportGenerator:
                         "security-severity": self._severity_to_cvss(severity),
                         "owasp": owasp_info["id"],
                         "owasp-category": owasp_info["name"],
-                        "owasp-url": owasp_info["url"]
+                        "owasp-url": owasp_info["url"],
+                        "tags": [
+                            "security",
+                            f"owasp-{owasp_info['id'].lower()}",
+                        ]
                     }
                 }
                 
-                # Add help text with remediation if available
+                if vuln.cwe_id:
+                    rule_def["helpUri"] = f"https://cwe.mitre.org/data/definitions/{vuln.cwe_id.replace('CWE-', '')}.html"
+                    rule_def["properties"]["cwe"] = vuln.cwe_id
+                    rule_def["properties"]["tags"].append(f"cwe-{vuln.cwe_id.lower()}")
+                
                 remediation = getattr(vuln, 'remediation', None)
                 if remediation:
                     rule_def["help"] = {
@@ -1108,21 +1489,10 @@ class ReportGenerator:
                         "markdown": f"**OWASP:** [{owasp_info['id']} - {owasp_info['name']}]({owasp_info['url']})\n\n{remediation}"
                     }
                 
-                if vuln.cwe_id:
-                    rule_def["helpUri"] = f"https://cwe.mitre.org/data/definitions/{vuln.cwe_id.replace('CWE-', '')}.html"
-                    rule_def["properties"]["cwe"] = vuln.cwe_id
-                
-                # Add OWASP as a tag
-                rule_def["properties"]["tags"] = [
-                    "security",
-                    f"owasp-{owasp_info['id'].lower()}",
-                    f"cwe-{vuln.cwe_id.lower()}" if vuln.cwe_id else "security"
-                ]
-                
                 rules.append(rule_def)
             
             # Create result
-            results.append({
+            result_entry = {
                 "ruleId": rule_id,
                 "ruleIndex": rule_ids[rule_id],
                 "message": {"text": f"{vuln.vuln_type} found at {vuln.url}"},
@@ -1132,9 +1502,17 @@ class ReportGenerator:
                     }
                 }],
                 "partialFingerprints": {
-                    "primaryLocationLineHash": str(hash(f"{vuln.url}{vuln.parameter}") % (10 ** 10))
+                    "primaryLocationLineHash": str(hash(f"{vuln.url}{vuln.parameter}{vuln.payload}") % (10 ** 10))
                 }
-            })
+            }
+            
+            # Add snippet if payload available
+            if vuln.payload:
+                result_entry["locations"][0]["physicalLocation"]["region"] = {
+                    "snippet": {"text": vuln.payload}
+                }
+            
+            results.append(result_entry)
         
         sarif = {
             "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",

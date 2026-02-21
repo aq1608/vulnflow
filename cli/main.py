@@ -24,7 +24,12 @@ except ImportError:
     RICH_AVAILABLE = False
 
 # Import from project modules
-from crawler.spider import AsyncWebCrawler
+from crawler.spider import AsyncWebCrawler, AuthConfig
+try:
+    from crawler.spa_spider import SPAWebCrawler
+    SPA_CRAWLER_AVAILABLE = True
+except ImportError:
+    SPA_CRAWLER_AVAILABLE = False
 from detector.tech_fingerprint import TechnologyDetector
 from remediation.engine import RemediationEngine
 from reports.generator import ReportGenerator
@@ -296,7 +301,10 @@ async def run_full_scan(
     smart_payloads: bool = True,
     confidence_threshold: float = 0.6,
     mode: str = 'full',
-    show_remediation: bool = False
+    show_remediation: bool = False,
+    auth_config: Optional['AuthConfig'] = None,
+    spa_mode: bool = False,
+    headless: bool = True
 ) -> dict:
     """
     Run a complete scan against the target with parallel execution and optional AI enhancement.
@@ -381,7 +389,25 @@ async def run_full_scan(
             # Phase 1: Crawl (0-20%)
             timer.start_phase("Crawling")
             progress.update(main_task, completed=0, description="[cyan]Phase 1: Crawling website...", status="Starting crawler")
-            crawler = AsyncWebCrawler(target_url, depth, max_pages)
+            if spa_mode and SPA_CRAWLER_AVAILABLE:
+                crawler = SPAWebCrawler(
+                    target_url,
+                    max_depth=depth,
+                    max_pages=max_pages,
+                    auth_config=auth_config,
+                    headless=headless,
+                    discover_api=True
+                )
+                if verbose:
+                    console.print("  [cyan]Using SPA crawler (Playwright)[/cyan]")
+            else:
+                crawler = AsyncWebCrawler(
+                    target_url,
+                    max_depth=depth,
+                    max_pages=max_pages,
+                    auth_config=auth_config
+                )
+            # crawler = AsyncWebCrawler(target_url, depth, max_pages, auth_config)
             crawl_results = await crawler.crawl()
             results["pages_scanned"] = len(crawl_results.get("urls", {}))
             results["forms_tested"] = len(crawl_results.get("forms", []))
@@ -464,7 +490,7 @@ async def run_full_scan(
         # Fallback without rich
         print("[*] Phase 1: Crawling website...")
         timer.start_phase("Crawling")
-        crawler = AsyncWebCrawler(target_url, depth, max_pages)
+        crawler = AsyncWebCrawler(target_url, depth, max_pages, auth_config)
         crawl_results = await crawler.crawl()
         results["pages_scanned"] = len(crawl_results.get("urls", {}))
         results["forms_tested"] = len(crawl_results.get("forms", []))
@@ -744,10 +770,30 @@ def cli():
 @click.option('--stats', is_flag=True, help='Show execution statistics')
 @click.option('--timing', is_flag=True, help='Show detailed timing breakdown')
 @click.option('--no-timing', is_flag=True, help='Hide timing information')
+@click.option('--login-url', default=None, help='Login URL for form/API authentication')
+@click.option('--username', '-u', default=None, help='Username/email for authentication')
+@click.option('--password', '-p', default=None, help='Password for authentication')
+@click.option('--username-field', default='email', help='Form field name for username (default: email)')
+@click.option('--password-field', default='password', help='Form field name for password (default: password)')
+@click.option('--auth-method', type=click.Choice(['form', 'json', 'basic', 'bearer', 'cookie']),
+              default='json', help='Authentication method (default: json)')
+@click.option('--bearer-token', default=None, help='Bearer token for API authentication')
+@click.option('--cookies', default=None, help='Cookies as JSON string: \'{"session": "abc123"}\'')
+@click.option('--auth-header', default=None, multiple=True, 
+              help='Custom auth headers (can use multiple): --auth-header "X-API-Key: abc123"')
+@click.option('--basic-auth', default=None, help='Basic auth credentials as "username:password"')
+
+# Add to the scan command options
+@click.option('--spa', is_flag=True, help='Enable SPA/JavaScript rendering mode (requires Playwright)')
+@click.option('--headless/--no-headless', default=True, help='Run browser in headless mode (default: headless)')
+
 def scan(target_url, depth, max_pages, output, output_format, fail_on, verbose, 
          remediation, no_ai, api_key, smart_payloads, confidence_threshold,
          mode, workers, concurrent_targets, rate_limit, timeout, 
-         stats, timing, no_timing):
+         stats, timing, no_timing,
+         login_url, username, password, username_field, password_field,
+         auth_method, bearer_token, cookies, auth_header, basic_auth,
+         spa, headless):
     """Scan a target URL for vulnerabilities with optional AI-powered analysis
     
     Examples:
@@ -783,7 +829,76 @@ def scan(target_url, depth, max_pages, output, output_format, fail_on, verbose,
     # Validate URL
     if not target_url.startswith(('http://', 'https://')):
         target_url = 'http://' + target_url
+    auth_config = None
     
+    if any([login_url, username, bearer_token, cookies, basic_auth, auth_header]):
+        # Parse cookies if provided as JSON string
+        parsed_cookies = {}
+        if cookies:
+            try:
+                parsed_cookies = json.loads(cookies)
+            except json.JSONDecodeError:
+                if RICH_AVAILABLE:
+                    console.print("[red]Error: Invalid cookies JSON format[/red]")
+                else:
+                    print("Error: Invalid cookies JSON format")
+                sys.exit(1)
+        
+        # Parse custom headers
+        custom_headers = {}
+        if auth_header:
+            for header in auth_header:
+                if ':' in header:
+                    key, value = header.split(':', 1)
+                    custom_headers[key.strip()] = value.strip()
+        
+        # Parse basic auth
+        basic_user, basic_pass = None, None
+        if basic_auth:
+            if ':' in basic_auth:
+                basic_user, basic_pass = basic_auth.split(':', 1)
+            else:
+                basic_user = basic_auth
+                basic_pass = ''
+        
+        # Determine login method based on auth_method option
+        login_method = 'POST'
+        if auth_method == 'json':
+            login_method = 'JSON'
+        elif auth_method == 'form':
+            login_method = 'POST'
+        
+        auth_config = AuthConfig(
+            login_url=login_url,
+            username=username,
+            password=password,
+            username_field=username_field,
+            password_field=password_field,
+            login_method=login_method,
+            bearer_token=bearer_token,
+            cookies=parsed_cookies,
+            basic_auth_user=basic_user,
+            basic_auth_pass=basic_pass,
+            custom_headers=custom_headers,
+            logout_pattern=r'/logout|/signout|/sign-out|/log-out'
+        )
+        
+        if verbose:
+            if RICH_AVAILABLE:
+                console.print("[green]✓ Authentication configured[/green]")
+                if login_url:
+                    console.print(f"  [dim]Login URL: {login_url}[/dim]")
+                if username:
+                    console.print(f"  [dim]Username: {username}[/dim]")
+                if bearer_token:
+                    console.print(f"  [dim]Bearer token provided[/dim]")
+                if parsed_cookies:
+                    console.print(f"  [dim]Cookies: {len(parsed_cookies)} provided[/dim]")
+            else:
+                print("✓ Authentication configured")
+                if login_url:
+                    print(f"  Login URL: {login_url}")
+
     if RICH_AVAILABLE:
         # Display scan configuration
         config_table = Table(show_header=False, box=None, padding=(0, 1))
@@ -799,6 +914,20 @@ def scan(target_url, depth, max_pages, output, output_format, fail_on, verbose,
         config_table.add_row("Max Pages", str(max_pages))
         config_table.add_row("Workers", str(workers))
         config_table.add_row("Concurrent Targets", str(concurrent_targets))
+
+        if auth_config:
+            auth_type = []
+            if login_url and username:
+                auth_type.append(f"Login ({auth_method})")
+            if bearer_token:
+                auth_type.append("Bearer Token")
+            if parsed_cookies:
+                auth_type.append("Cookies")
+            if basic_auth:
+                auth_type.append("Basic Auth")
+            config_table.add_row("Authentication", "[green]" + ", ".join(auth_type) + "[/green]")
+        else:
+            config_table.add_row("Authentication", "[dim]None[/dim]")
         
         console.print(config_table)
         console.print()
@@ -845,7 +974,10 @@ def scan(target_url, depth, max_pages, output, output_format, fail_on, verbose,
             smart_payloads=smart_payloads,
             confidence_threshold=confidence_threshold,
             mode=mode,
-            show_remediation=remediation
+            show_remediation=remediation,
+            auth_config=auth_config,
+            spa_mode=spa,
+            headless=headless
         ))
     except KeyboardInterrupt:
         scan_timer.stop()

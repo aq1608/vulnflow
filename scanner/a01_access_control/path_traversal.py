@@ -157,7 +157,7 @@ class PathTraversalScanner(BaseScanner):
             # Check for Linux evidence
             for pattern in self.LINUX_EVIDENCE:
                 if re.search(pattern, body):
-                    print(f"[*] Path Traversal (linux): Found vulnerability from A01")
+                    print(f"[*] Path Traversal (linux): Found potential vulnerability from A01")
                     return self.create_vulnerability(
                         vuln_type="Path Traversal / Local File Inclusion",
                         severity=Severity.CRITICAL,
@@ -178,7 +178,7 @@ class PathTraversalScanner(BaseScanner):
             # Check for Windows evidence
             for pattern in self.WINDOWS_EVIDENCE:
                 if re.search(pattern, body, re.IGNORECASE):
-                    print(f"[*] Path Traversal (windows): Found vulnerability from A01")
+                    print(f"[*] Path Traversal (windows): Found potential vulnerability from A01")
                     return self.create_vulnerability(
                         vuln_type="Path Traversal / Local File Inclusion",
                         severity=Severity.CRITICAL,
@@ -199,7 +199,7 @@ class PathTraversalScanner(BaseScanner):
             # Check for PHP source code disclosure
             for pattern in self.PHP_SOURCE_EVIDENCE:
                 if re.search(pattern, body):
-                    print(f"[*] Path Traversal (php): Found vulnerability from A01")
+                    print(f"[*] Path Traversal (php): Found potential vulnerability from A01")
                     return self.create_vulnerability(
                         vuln_type="Local File Inclusion - Source Code Disclosure",
                         severity=Severity.HIGH,

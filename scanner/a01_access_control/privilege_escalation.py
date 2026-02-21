@@ -218,7 +218,7 @@ class PrivilegeEscalationScanner(BaseScanner):
                                     cwe_id="CWE-269",
                                     remediation=self._get_remediation()
                                 ))
-                                break  # Found vulnerability for this param
+                                break  # Found potential vulnerability for this param
                 
                 except Exception:
                     continue

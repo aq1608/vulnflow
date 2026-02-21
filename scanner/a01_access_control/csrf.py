@@ -132,7 +132,7 @@ class CSRFScanner(BaseScanner):
                 
                 if not has_csrf_token:
                     form_url = urljoin(url, action) if action else url
-                    
+                    print(f"[*] CSRF missing token: Found potential vulnerability from A01")
                     vulnerabilities.append(self.create_vulnerability(
                         vuln_type="CSRF - Missing Token in Form",
                         severity=Severity.HIGH,
@@ -215,6 +215,7 @@ class CSRFScanner(BaseScanner):
                         )
                         
                         if ajax_response and ajax_response.status in [200, 201]:
+                            print(f"[*] CSRF Unprotected Endpoint: Found potential vulnerability from A01")
                             vulnerabilities.append(self.create_vulnerability(
                                 vuln_type="CSRF - Unprotected State-Changing Endpoint",
                                 severity=Severity.MEDIUM,
@@ -327,6 +328,7 @@ class CSRFScanner(BaseScanner):
             if response and response.status in [200, 201, 302]:
                 body = await response.text()
                 if not self._is_csrf_error(body):
+                    print(f"[*] CSRF Empty token: Found potential vulnerability from A01")
                     return self.create_vulnerability(
                         vuln_type="CSRF - Empty Token Accepted",
                         severity=Severity.HIGH,
@@ -376,6 +378,7 @@ class CSRFScanner(BaseScanner):
             if response and response.status in [200, 201, 302]:
                 body = await response.text()
                 if not self._is_csrf_error(body):
+                    print(f"[*] CSRF Unvalidated token: Found potential vulnerability from A01")
                     return self.create_vulnerability(
                         vuln_type="CSRF - Token Not Validated",
                         severity=Severity.CRITICAL,
@@ -419,6 +422,7 @@ class CSRFScanner(BaseScanner):
             if response and response.status in [200, 201, 302]:
                 body = await response.text()
                 if not self._is_csrf_error(body):
+                    print(f"[*] CSRF missing token: Found potential vulnerability from A01")
                     return self.create_vulnerability(
                         vuln_type="CSRF - Missing Token Accepted",
                         severity=Severity.HIGH,
@@ -508,6 +512,7 @@ class CSRFScanner(BaseScanner):
                 has_samesite = 'samesite' in cookie_lower
                 
                 if not has_samesite:
+                    print(f"[*] CSRF missing cookie: Found potential vulnerability from A01")
                     vulnerabilities.append(self.create_vulnerability(
                         vuln_type="CSRF Risk - Session Cookie Missing SameSite",
                         severity=Severity.MEDIUM,
@@ -558,12 +563,10 @@ class CSRFScanner(BaseScanner):
 4. Verify the Origin and Referer headers for state-changing requests
 5. For APIs, require custom headers (e.g., X-Requested-With)
 6. Use frameworks' built-in CSRF protection
-
 Example (Python/Flask):
 ```python
 from flask_wtf.csrf import CSRFProtect
 csrf = CSRFProtect(app)
-
 # In templates:
 <form method="post">
     {{ csrf_token() }}
@@ -571,7 +574,6 @@ csrf = CSRFProtect(app)
 </form>
 ```
 Example (Django):
-
 ```python
 # In templates:
 <form method="post">

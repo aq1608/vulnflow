@@ -249,13 +249,14 @@ class BaseScanner(ABC):
         data: Dict = None,
         headers: Dict = None,
         allow_redirects: bool = True,
-        payload: str = None  # The payload to look for in response
-    ) -> Tuple[Optional[aiohttp.ClientResponse], Optional[HTTPMessage]]:
+        payload: str = None
+    ) -> Tuple[Optional[aiohttp.ClientResponse], Optional['HTTPMessage']]:
         """
         Make HTTP request and capture full request/response details.
         Returns tuple of (response, HTTPMessage)
         """
         import time
+        from urllib.parse import urlencode
         
         http_msg = HTTPMessage()
         http_msg.method = method.upper()
@@ -277,20 +278,46 @@ class BaseScanner(ABC):
                 http_msg.url = f"{url}?{urlencode(params)}"
         
         start_time = time.time()
+        response = None
         
         try:
-            response = await self.make_request(
-                session, method, url, params, data, headers, allow_redirects
-            )
+            # Make the actual request
+            if method.upper() == "GET":
+                response = await session.get(
+                    url, params=params, headers=headers,
+                    allow_redirects=allow_redirects, timeout=self.timeout
+                )
+            elif method.upper() == "POST":
+                response = await session.post(
+                    url, params=params, data=data, headers=headers,
+                    allow_redirects=allow_redirects, timeout=self.timeout
+                )
+            elif method.upper() == "PUT":
+                response = await session.put(
+                    url, params=params, data=data, headers=headers,
+                    allow_redirects=allow_redirects, timeout=self.timeout
+                )
+            elif method.upper() == "DELETE":
+                response = await session.delete(
+                    url, params=params, headers=headers,
+                    allow_redirects=allow_redirects, timeout=self.timeout
+                )
+            elif method.upper() == "OPTIONS":
+                response = await session.options(
+                    url, headers=headers,
+                    allow_redirects=allow_redirects, timeout=self.timeout
+                )
             
             elapsed_ms = (time.time() - start_time) * 1000
             http_msg.response_time_ms = elapsed_ms
             
             if response:
                 http_msg.status_code = response.status
+                http_msg.status_reason = response.reason
                 http_msg.response_headers = dict(response.headers)
                 
                 try:
+                    # Read the body - this consumes the response
                     body = await response.text()
                     http_msg.response_body = body
                     
@@ -299,14 +326,29 @@ class BaseScanner(ABC):
                         http_msg.payload_reflected = True
                         http_msg.reflection_context = self._find_reflection_context(body, payload)
                 except Exception:
-                    pass
+                    http_msg.response_body = "[Error reading response body]"
+                
+                # Important: Release the connection back to the pool
+                response.release()
                 
                 return response, http_msg
             
             return None, http_msg
             
+        except asyncio.TimeoutError:
+            http_msg.response_body = "[Request timed out]"
+            if response:
+                response.release()
+            return None, http_msg
+        except aiohttp.ClientError as e:
+            http_msg.response_body = f"[Client error: {str(e)}]"
+            if response:
+                response.release()
+            return None, http_msg
         except Exception as e:
-            http_msg.response_body = f"Error: {str(e)}"
+            http_msg.response_body = f"[Error: {str(e)}]"
+            if response:
+                response.release()
             return None, http_msg
     
     def _find_reflection_context(self, body: str, payload: str, context_chars: int = 100) -> str:
