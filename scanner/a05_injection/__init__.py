@@ -28,6 +28,7 @@ from .hhi import HostHeaderInjectionScanner
 from .crlf import CRLFInjectionScanner
 from .code_injection import CodeInjectionScanner
 from .el_injection import ELInjectionScanner
+from .xxe import XXEScanner
 
 __all__ = [
     # SQL Injection - CWE-89, CWE-564
@@ -59,6 +60,9 @@ __all__ = [
     
     # Expression Language Injection - CWE-917
     'ELInjectionScanner',
+
+    # XML External Entity Injection - CWE-611, CWE-776, CWE-91
+    'XXEScanner',
 ]
 
 # OWASP 2025 A05 Injection - CWE Mapping
@@ -85,7 +89,9 @@ OWASP_A05_2025_CWES = {
     'CWE-113': 'HTTP Response Splitting',
     'CWE-116': 'Improper Encoding/Escaping',
     'CWE-564': 'SQL Injection: Hibernate',
+    'CWE-611': 'Improper Restriction of XML External Entity Reference',
     'CWE-643': 'XPath Injection',
+    'CWE-776': 'Improper Restriction of Recursive Entity References (Billion Laughs)',
     'CWE-917': 'Expression Language Injection',
     'CWE-943': 'NoSQL Injection',
     'CWE-1336': 'Server-Side Template Injection',
@@ -103,6 +109,7 @@ SCANNER_CWE_MAP = {
     'CRLFInjectionScanner': ['CWE-93', 'CWE-113'],
     'CodeInjectionScanner': ['CWE-94', 'CWE-95', 'CWE-96'],
     'ELInjectionScanner': ['CWE-917'],
+    'XXEScanner': ['CWE-611', 'CWE-776', 'CWE-91'],
 }
 
 
@@ -119,6 +126,7 @@ def get_all_injection_scanners():
         CRLFInjectionScanner,
         CodeInjectionScanner,
         ELInjectionScanner,
+        XXEScanner,
     ]
 
 
