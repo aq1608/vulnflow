@@ -275,7 +275,7 @@ def print_banner():
 ║   ╚████╔╝ ╚██████╔╝███████╗██║ ╚████║██║     ███████╗╚██████╔╝╚███╔███╔╝  ║
 ║    ╚═══╝   ╚═════╝ ╚══════╝╚═╝  ╚═══╝╚═╝     ╚══════╝ ╚═════╝  ╚══╝╚══╝   ║
 ║                                                                           ║
-║            AI-Enhanced Web Vulnerability Scanner v2.0.1                   ║
+║            AI-Enhanced Web Vulnerability Scanner v3.0.0                   ║
 ║                                                                           ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
     """
@@ -444,6 +444,8 @@ async def run_full_scan(
                     )
             if ai_mode:
                 scanner = EnhancedVulnerabilityScanner(scan_config)
+                if hasattr(crawler, '_auth_token') and crawler._auth_token:
+                    scanner.set_auth_token(crawler._auth_token)
                 tech_list = list(results["tech_stack"].keys()) if results["tech_stack"] else []
                 
                 if hasattr(scanner, 'set_progress_callback'):
@@ -723,7 +725,7 @@ def determine_exit_code(results: dict, fail_on: str) -> int:
 
 
 @click.group()
-@click.version_option(version="2.0.1")
+@click.version_option(version="3.0.0")
 def cli():
     """VulnFlow - AI-Enhanced Web Vulnerability Scanner with Contextual Remediation
     
@@ -1096,7 +1098,7 @@ def version():
     ai_available = has_api_key and ENHANCED_SCANNER_AVAILABLE
     
     if RICH_AVAILABLE:
-        console.print("\n[bold]VulnFlow[/bold] version 2.0.1")
+        console.print("\n[bold]VulnFlow[/bold] version 3.0.0")
         console.print("[dim]AI-Enhanced Web Vulnerability Scanner with Contextual Remediation[/dim]")
         console.print()
         console.print("[bold]Features:[/bold]")
@@ -1118,7 +1120,7 @@ def version():
                 console.print("  [dim]Set GROQ_API_KEY environment variable to enable[/dim]")
                 console.print("  [dim]Get your free API key at: https://console.groq.com[/dim]")
     else:
-        print("\nVulnFlow version 2.0.1")
+        print("\nVulnFlow version 3.0.0")
         print("AI-Enhanced Web Vulnerability Scanner with Contextual Remediation")
         print()
         print("Features:")

@@ -17,7 +17,7 @@ import aiohttp
 import re
 import hashlib
 import base64
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Set
 from urllib.parse import urljoin, urlparse
 
 from ..base import BaseScanner, Vulnerability, Severity, OWASPCategory
@@ -32,6 +32,14 @@ class IntegrityCheckScanner(BaseScanner):
     
     def __init__(self):
         super().__init__()
+        
+        # ══════════════════════════════════════════════════════════════
+        # FIX: Track seen resources to prevent duplicates
+        # ══════════════════════════════════════════════════════════════
+        self._seen_scripts: Set[str] = set()
+        self._seen_stylesheets: Set[str] = set()
+        self._seen_mixed_content: Set[str] = set()
+        self._csp_checked: bool = False  # CSP only needs to be reported once
         
         # Known CDN domains that should always have SRI
         self.cdn_domains = [
@@ -62,6 +70,13 @@ class IntegrityCheckScanner(BaseScanner):
             'chart',
         ]
     
+    def reset(self):
+        """Reset seen resources for a new scan"""
+        self._seen_scripts.clear()
+        self._seen_stylesheets.clear()
+        self._seen_mixed_content.clear()
+        self._csp_checked = False
+    
     async def scan(
         self,
         session: aiohttp.ClientSession,
@@ -79,13 +94,18 @@ class IntegrityCheckScanner(BaseScanner):
         mixed_vulns = await self._check_mixed_content(session, url)
         vulnerabilities.extend(mixed_vulns)
         
-        # Test 3: Check Content Security Policy
-        csp_vulns = await self._check_csp(session, url)
-        vulnerabilities.extend(csp_vulns)
+        # Test 3: Check Content Security Policy (only once per scan)
+        if not self._csp_checked:
+            csp_vulns = await self._check_csp(session, url)
+            vulnerabilities.extend(csp_vulns)
+            self._csp_checked = True
         
-        # Test 4: Check for inline scripts without nonce/hash
-        inline_vulns = await self._check_inline_scripts(session, url)
-        vulnerabilities.extend(inline_vulns)
+        # Test 4: Check for inline scripts without nonce/hash (only first page)
+        # This is typically a site-wide issue, so check once
+        if not hasattr(self, '_inline_checked'):
+            inline_vulns = await self._check_inline_scripts(session, url)
+            vulnerabilities.extend(inline_vulns)
+            self._inline_checked = True
         
         return vulnerabilities
     
@@ -109,14 +129,6 @@ class IntegrityCheckScanner(BaseScanner):
                 content = await response.text()
                 page_domain = urlparse(url).netloc
                 
-                # Find all script tags
-                script_pattern = r'<script[^>]*src=["\']([^"\']+)["\'][^>]*>'
-                scripts = re.findall(script_pattern, content, re.IGNORECASE)
-                
-                # Find all stylesheet links
-                style_pattern = r'<link[^>]*href=["\']([^"\']+\.css[^"\']*)["\'][^>]*>'
-                styles = re.findall(style_pattern, content, re.IGNORECASE)
-                
                 # Check scripts
                 for script_match in re.finditer(
                     r'<script[^>]*src=["\']([^"\']+)["\'][^>]*>',
@@ -126,18 +138,29 @@ class IntegrityCheckScanner(BaseScanner):
                     full_tag = script_match.group(0)
                     src = script_match.group(1)
                     
+                    # Normalize the URL for deduplication
+                    normalized_src = self._normalize_url(src, url)
+                    
+                    # ══════════════════════════════════════════════════════════
+                    # FIX: Skip if already reported
+                    # ══════════════════════════════════════════════════════════
+                    if normalized_src in self._seen_scripts:
+                        continue
+                    
                     if self._is_external_resource(src, page_domain):
                         has_integrity = 'integrity=' in full_tag.lower()
                         
                         if not has_integrity:
+                            self._seen_scripts.add(normalized_src)  # Mark as seen
                             severity = self._get_severity_for_resource(src)
+                            
                             vulnerabilities.append(Vulnerability(
                                 vuln_type="Missing Subresource Integrity (Script)",
                                 severity=severity,
                                 url=url,
                                 parameter="script_src",
                                 payload=src,
-                                evidence=f"External script loaded without integrity attribute",
+                                evidence=f"External script loaded without integrity attribute: {src}",
                                 description=f"External JavaScript from {urlparse(src).netloc} loaded without SRI hash verification",
                                 cwe_id="CWE-353",
                                 owasp_category=self.owasp_category,
@@ -153,17 +176,28 @@ class IntegrityCheckScanner(BaseScanner):
                     full_tag = style_match.group(0)
                     href = style_match.group(1)
                     
+                    # Normalize the URL for deduplication
+                    normalized_href = self._normalize_url(href, url)
+                    
+                    # ══════════════════════════════════════════════════════════
+                    # FIX: Skip if already reported
+                    # ══════════════════════════════════════════════════════════
+                    if normalized_href in self._seen_stylesheets:
+                        continue
+                    
                     if self._is_external_resource(href, page_domain):
                         has_integrity = 'integrity=' in full_tag.lower()
                         
                         if not has_integrity:
+                            self._seen_stylesheets.add(normalized_href)  # Mark as seen
+                            
                             vulnerabilities.append(Vulnerability(
                                 vuln_type="Missing Subresource Integrity (Stylesheet)",
                                 severity=Severity.LOW,
                                 url=url,
                                 parameter="link_href",
                                 payload=href,
-                                evidence=f"External stylesheet loaded without integrity attribute",
+                                evidence=f"External stylesheet loaded without integrity attribute: {href}",
                                 description=f"External CSS from {urlparse(href).netloc} loaded without SRI hash verification",
                                 cwe_id="CWE-353",
                                 owasp_category=self.owasp_category,
@@ -175,13 +209,31 @@ class IntegrityCheckScanner(BaseScanner):
         
         return vulnerabilities
     
+    def _normalize_url(self, resource_url: str, page_url: str) -> str:
+        """Normalize resource URL for consistent deduplication"""
+        # Handle protocol-relative URLs
+        if resource_url.startswith('//'):
+            resource_url = 'https:' + resource_url
+        # Handle relative URLs
+        elif not resource_url.startswith(('http://', 'https://')):
+            resource_url = urljoin(page_url, resource_url)
+        
+        # Remove query strings and fragments for deduplication
+        # (same file with different cache busters should be one finding)
+        parsed = urlparse(resource_url)
+        normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+        
+        return normalized.lower()
+    
     def _is_external_resource(self, src: str, page_domain: str) -> bool:
         """Check if resource is from external domain."""
         if src.startswith('//'):
-            return True
+            # Protocol-relative URL - extract domain
+            resource_domain = src.split('/')[2] if len(src.split('/')) > 2 else ''
+            return resource_domain.lower() != page_domain.lower()
         if src.startswith('http://') or src.startswith('https://'):
             resource_domain = urlparse(src).netloc
-            return resource_domain != page_domain
+            return resource_domain.lower() != page_domain.lower()
         return False
     
     def _get_severity_for_resource(self, src: str) -> Severity:
@@ -230,37 +282,44 @@ class IntegrityCheckScanner(BaseScanner):
                     re.IGNORECASE
                 )
                 
-                seen = set()
                 for resource in http_resources:
-                    if resource not in seen:
-                        seen.add(resource)
-                        
-                        # Determine resource type
-                        if any(ext in resource.lower() for ext in ['.js', '.mjs']):
-                            resource_type = "JavaScript"
-                            severity = Severity.HIGH
-                        elif any(ext in resource.lower() for ext in ['.css']):
-                            resource_type = "Stylesheet"
-                            severity = Severity.MEDIUM
-                        elif any(ext in resource.lower() for ext in ['.png', '.jpg', '.gif', '.svg', '.ico']):
-                            resource_type = "Image"
-                            severity = Severity.LOW
-                        else:
-                            resource_type = "Resource"
-                            severity = Severity.MEDIUM
-                        
-                        vulnerabilities.append(Vulnerability(
-                            vuln_type=f"Mixed Content - {resource_type}",
-                            severity=severity,
-                            url=url,
-                            parameter="resource_url",
-                            payload=resource,
-                            evidence=f"HTTP {resource_type.lower()} loaded on HTTPS page",
-                            description=f"Insecure HTTP resource loaded on secure HTTPS page, vulnerable to MITM attacks",
-                            cwe_id="CWE-319",
-                            owasp_category=self.owasp_category,
-                            remediation=self._get_mixed_content_remediation()
-                        ))
+                    # Normalize for deduplication
+                    normalized = resource.lower().split('?')[0]  # Remove query string
+                    
+                    # ══════════════════════════════════════════════════════════
+                    # FIX: Skip if already reported
+                    # ══════════════════════════════════════════════════════════
+                    if normalized in self._seen_mixed_content:
+                        continue
+                    
+                    self._seen_mixed_content.add(normalized)
+                    
+                    # Determine resource type
+                    if any(ext in resource.lower() for ext in ['.js', '.mjs']):
+                        resource_type = "JavaScript"
+                        severity = Severity.HIGH
+                    elif any(ext in resource.lower() for ext in ['.css']):
+                        resource_type = "Stylesheet"
+                        severity = Severity.MEDIUM
+                    elif any(ext in resource.lower() for ext in ['.png', '.jpg', '.gif', '.svg', '.ico']):
+                        resource_type = "Image"
+                        severity = Severity.LOW
+                    else:
+                        resource_type = "Resource"
+                        severity = Severity.MEDIUM
+                    
+                    vulnerabilities.append(Vulnerability(
+                        vuln_type=f"Mixed Content - {resource_type}",
+                        severity=severity,
+                        url=url,
+                        parameter="resource_url",
+                        payload=resource,
+                        evidence=f"HTTP {resource_type.lower()} loaded on HTTPS page: {resource}",
+                        description=f"Insecure HTTP resource loaded on secure HTTPS page, vulnerable to MITM attacks",
+                        cwe_id="CWE-319",
+                        owasp_category=self.owasp_category,
+                        remediation=self._get_mixed_content_remediation()
+                    ))
         
         except Exception:
             pass
@@ -432,90 +491,46 @@ class IntegrityCheckScanner(BaseScanner):
     
     def _get_sri_remediation(self, resource_url: str) -> str:
         """Get SRI remediation advice."""
-        return f"""
-1. Add integrity attribute with SHA-384 hash to external resources:
+        return f"""Add integrity attribute with SHA-384 hash to external resources:
 
-```html
 <script src="{resource_url}" 
         integrity="sha384-HASH_HERE" 
         crossorigin="anonymous"></script>
 
-2. Generate SRI hash using:
+Generate SRI hash:
 - Online: https://www.srihash.org/
-- Command line:
-        curl -s "{resource_url}" | openssl dgst -sha384 -binary | openssl base64 -A
+- CLI: curl -s "{resource_url}" | openssl dgst -sha384 -binary | openssl base64 -A
 
-3. Also add crossorigin="anonymous" attribute for CORS resources
-
-4. Use tools to automate SRI generation in your build process:
-- webpack-subresource-integrity
-- gulp-sri-hash
-- rollup-plugin-sri
-
-5. Monitor for hash mismatches in production (indicates tampering)
-"""
+Also add crossorigin="anonymous" for CORS resources."""
 
     def _get_mixed_content_remediation(self) -> str:
         """Get mixed content remediation advice."""
-        return """
-
-1. Update all resource URLs to use HTTPS:
-- Change http:// to https://
-- Or use protocol-relative URLs: //example.com/resource.js
-
-2. Add upgrade-insecure-requests CSP directive:
-        Content-Security-Policy: upgrade-insecure-requests
-
-3. Use HSTS to enforce HTTPS:
-        Strict-Transport-Security: max-age=31536000; includeSubDomains
-
-4. Audit all external resources and ensure HTTPS availability
-
-5. For legacy resources without HTTPS, consider:
-- Hosting them locally
-- Finding HTTPS alternatives
-- Using a proxy
-"""
+        return """1. Update all resource URLs to use HTTPS
+2. Use protocol-relative URLs: //example.com/resource.js
+3. Add CSP directive: upgrade-insecure-requests
+4. Enable HSTS: Strict-Transport-Security: max-age=31536000"""
+    
     def _get_csp_remediation(self) -> str:
         """Get CSP remediation advice."""
-        return """
-1. Implement a strong Content Security Policy:
-    Content-Security-Policy: 
-        default-src 'self';
-        script-src 'self' https://trusted-cdn.com;
-        style-src 'self' 'unsafe-inline';
-        img-src 'self' data: https:;
-        font-src 'self';
-        connect-src 'self' https://api.example.com;
-        frame-ancestors 'none';
-        base-uri 'self';
-        form-action 'self';
+        return """Implement Content Security Policy:
 
-2. Avoid 'unsafe-inline' and 'unsafe-eval' where possible
+Content-Security-Policy: 
+    default-src 'self';
+    script-src 'self' https://trusted-cdn.com;
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: https:;
+    frame-ancestors 'none';
 
-3. Use nonces or hashes for necessary inline scripts:
-        Content-Security-Policy: script-src 'nonce-RANDOM_VALUE'
-
-4. Start with Content-Security-Policy-Report-Only to test
-
-5. Use CSP reporting to monitor violations:
-        Content-Security-Policy: ...; report-uri /csp-report
-"""
+Avoid 'unsafe-inline' and 'unsafe-eval' where possible.
+Use nonces or hashes for necessary inline scripts."""
 
     def _get_nonce_remediation(self) -> str:
         """Get nonce remediation advice."""
-        return """
-1. Generate a unique nonce for each page load:
-Server-side (Python example):
-    import secrets
-    nonce = secrets.token_urlsafe(16)
-2. Add nonce to CSP header:
-    Content-Security-Policy: script-src 'nonce-{nonce}'
-3. Add nonce to inline scripts:
-<script nonce="{nonce}">
-    // Your inline code
-</script>
-4. Alternatively, use hashes for static inline scripts:
-    Content-Security-Policy: script-src 'sha256-BASE64_HASH'
-5. Never reuse nonces across requests
-"""
+        return """Use CSP nonces for inline scripts:
+
+1. Generate unique nonce per request
+2. Add to CSP: script-src 'nonce-{random}'
+3. Add to scripts: <script nonce="{random}">
+
+Or use hashes for static inline scripts:
+Content-Security-Policy: script-src 'sha256-{hash}'"""

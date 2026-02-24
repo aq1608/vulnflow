@@ -64,6 +64,11 @@ from .a05_injection.code_injection import CodeInjectionScanner
 from .a05_injection.crlf import CRLFInjectionScanner
 from .a05_injection.el_injection import ELInjectionScanner
 from .xxe.xxe import XXEScanner
+try:
+    from .a05_injection.xss_playwright import PlaywrightXSSScanner
+    PLAYWRIGHT_XSS_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_XSS_AVAILABLE = False
 
 # ----- A06:2025 - Insecure Design -----
 from .a06_insecure_design.business_logic import BusinessLogicScanner
@@ -154,6 +159,10 @@ class EnhancedVulnerabilityScanner:
         
         # Progress callback
         self._progress_callback = None
+
+        self.playwright_xss_enabled = self.config.get('playwright_xss', True) and PLAYWRIGHT_XSS_AVAILABLE
+        self.playwright_headless = self.config.get('headless', True)
+        self._auth_token: Optional[str] = self.config.get('auth_token', None)
         
         self.all_scanners = {
             # ==========================================
@@ -245,7 +254,7 @@ class EnhancedVulnerabilityScanner:
             'code_integrity': CodeIntegrityScanner(),
             'cookie_integrity': CookieIntegrityScanner(),
             'deserialization': InsecureDeserializationScanner(),
-            'subresource_integrity': SubresourceIntegrityScanner(),
+            # 'subresource_integrity': SubresourceIntegrityScanner(),
             # ==========================================
             # A09:2025 - Security Logging and Alerting Failures
             # ==========================================
@@ -308,6 +317,7 @@ class EnhancedVulnerabilityScanner:
             'false_positives_filtered': 0,
             'smart_payloads_used': 0,
             'total_ai_calls': 0,
+            'playwright_xss_findings': 0,
             'owasp_coverage': self._calculate_owasp_coverage()
         }
     
@@ -321,7 +331,7 @@ class EnhancedVulnerabilityScanner:
             'A05': ['sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi', 'ssti', 'ldapi', 'xpath', 'hhi', 'xxe', 'code_injection', 'crlf', 'el_injection'],
             'A06': ['rate_limiting', 'business_logic', 'clickjacking', 'file_upload', 'http_smuggling', 'race_condition', 'trust_boundary'],
             'A07': ['session_fixation', 'weak_password', 'brute_force', 'auth_bypass', 'default_credentials', 'mfa_check', 'session_management'],
-            'A08': ['deserialization', 'code_integrity', 'cookie_integrity', 'subresource_integrity'],
+            'A08': ['deserialization', 'code_integrity', 'cookie_integrity', ],
             'A09': ['log_injection', 'sensitive_log_data', 'log_file_exposure', 'insufficient_logging', 'alert_detection'],
             'A10': ['error_handling', 'fail_open', 'resource_limits'],
         }
@@ -367,6 +377,50 @@ class EnhancedVulnerabilityScanner:
         self._progress_callback = callback
         if self.executor:
             self.executor.set_progress_callback(callback)
+    
+    async def _run_playwright_xss_parallel(
+        self,
+        crawl_results: Dict,
+        base_url: str
+    ) -> List[Vulnerability]:
+        """
+        Run Playwright XSS scanner in parallel with HTTP scanners.
+        This method is designed to run concurrently without blocking.
+        """
+        if not PLAYWRIGHT_XSS_AVAILABLE:
+            return []
+        
+        if not base_url:
+            return []
+        
+        try:
+            print(f"[Playwright] Starting browser-based XSS scan...")
+            
+            xss_scanner = PlaywrightXSSScanner(headless=self.playwright_headless)
+            
+            vulns = await xss_scanner.scan_with_browser(
+                base_url=base_url,
+                forms=crawl_results.get('forms', []),
+                urls=crawl_results.get('urls', {}),
+                auth_token=self._auth_token
+            )
+            
+            self.metrics['playwright_xss_findings'] = len(vulns)
+            
+            if vulns:
+                print(f"[Playwright] Found {len(vulns)} XSS vulnerabilities")
+            else:
+                print(f"[Playwright] Scan complete (no XSS found)")
+            
+            return vulns
+            
+        except Exception as e:
+            print(f"[Playwright] Error: {str(e)[:100]}")
+            return []
+    
+    def set_auth_token(self, token: str):
+        """Set authentication token for authenticated scanning"""
+        self._auth_token = token
     
     async def scan_async(
         self,
@@ -470,16 +524,66 @@ class EnhancedVulnerabilityScanner:
             param_scanners_list = list(param_scanners.items())
             
             # Execute all scans in parallel
-            raw_vulnerabilities = await self.executor.execute_all_scans(
-                session,
-                targets,
-                site_scanners_list,
-                param_scanners_list,
-                base_url
+             # Create task for HTTP-based scanners
+            http_scan_task = asyncio.create_task(
+                self.executor.execute_all_scans(
+                    session,
+                    targets,
+                    site_scanners_list,
+                    param_scanners_list,
+                    base_url
+                )
             )
             
-            print(f"\n[*] Initial scan found {len(raw_vulnerabilities)} potential issues")
+            # Create task for Playwright XSS scanner (if enabled)
+            playwright_task = None
+            if self.playwright_xss_enabled and 'xss' in self.active_scanners:
+                playwright_task = asyncio.create_task(
+                    self._run_playwright_xss_parallel(crawl_results, base_url)
+                )
             
+            # Gather results from all tasks
+            if playwright_task:
+                print(f"[*] Running HTTP scanners and Playwright XSS in parallel...")
+                
+                results = await asyncio.gather(
+                    http_scan_task,
+                    playwright_task,
+                    return_exceptions=True
+                )
+                
+                # Process HTTP scan results
+                if isinstance(results[0], Exception):
+                    print(f"  [!] HTTP scan error: {results[0]}")
+                    http_vulns = []
+                else:
+                    http_vulns = results[0]
+                
+                # Process Playwright results
+                if isinstance(results[1], Exception):
+                    print(f"  [!] Playwright XSS error: {results[1]}")
+                    playwright_vulns = []
+                else:
+                    playwright_vulns = results[1]
+                
+                print(f"\n[*] HTTP scanners found: {len(http_vulns)} issues")
+                print(f"[*] Playwright XSS found: {len(playwright_vulns)} issues")
+                
+                raw_vulnerabilities = http_vulns + playwright_vulns
+            else:
+                # Just run HTTP scanners
+                raw_vulnerabilities = await http_scan_task
+            
+            print(f"\n[*] Total findings: {len(raw_vulnerabilities)} potential issues")
+            
+            # raw_vulnerabilities = await self.executor.execute_all_scans(
+            #     session,
+            #     targets,
+            #     site_scanners_list,
+            #     param_scanners_list,
+            #     base_url
+            # )
+
             # AI-enhanced validation and filtering
             validated_vulns = await self._ai_validate_vulnerabilities(
                 raw_vulnerabilities,

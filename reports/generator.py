@@ -1359,7 +1359,7 @@ class ReportGenerator:
             "scan_metadata": {
                 "timestamp": datetime.now().isoformat(),
                 "target": scan_results.get("target", "Unknown"),
-                "scanner_version": "2.0.0",
+                "scanner_version": "3.0.0",
                 "owasp_version": "2025",
                 "pages_scanned": scan_results.get("pages_scanned", 0),
                 "forms_tested": scan_results.get("forms_tested", 0)
@@ -1521,7 +1521,7 @@ class ReportGenerator:
                 "tool": {
                     "driver": {
                         "name": "VulnFlow",
-                        "version": "2.0.0",
+                        "version": "3.0.0",
                         "informationUri": "https://github.com/your-org/vulnflow",
                         "rules": rules,
                         "properties": {

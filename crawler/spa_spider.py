@@ -369,10 +369,29 @@ class SPAWebCrawler:
         page = await self._context.new_page()
         
         api_paths = [
-            '/api/Users', '/api/Products', '/api/Feedbacks', '/api/Challenges',
-            '/rest/user/whoami', '/rest/products/search', '/rest/basket',
-            '/rest/admin/application-version', '/rest/languages',
-            '/api/SecurityQuestions', '/api/Complaints',
+            '/rest/user/whoami',
+            '/rest/user/login',
+            '/rest/products/search',
+            '/rest/basket',
+            '/rest/admin/application-version',
+            '/rest/admin/application-configuration',
+            '/rest/languages',
+            '/rest/memories',
+            '/rest/chatbot/status',
+            '/rest/deluxe-membership',
+            '/rest/wallet/balance',
+            '/rest/track-order',
+            '/api/Users',
+            '/api/Products',
+            '/api/Feedbacks',
+            '/api/Complaints',
+            '/api/Recycles',
+            '/api/SecurityQuestions',
+            '/api/Challenges',
+            '/api/Quantitys',
+            '/api/Cards',
+            '/api/Addresss',
+            '/api/SecurityAnswers',
             '/metrics',           # Prometheus
             '/actuator',          # Spring Boot
             '/actuator/health',
