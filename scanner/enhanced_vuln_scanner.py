@@ -4,7 +4,7 @@ Enhanced Vulnerability Scanner with Groq AI Integration - OWASP 2025 VERSION
 Optimized for speed while maintaining low noise/false positives
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from urllib.parse import urlparse, parse_qs
 import asyncio
 import aiohttp
@@ -64,11 +64,19 @@ from .a05_injection.code_injection import CodeInjectionScanner
 from .a05_injection.crlf import CRLFInjectionScanner
 from .a05_injection.el_injection import ELInjectionScanner
 from .xxe.xxe import XXEScanner
+
+# Playwright-based scanners (browser-based detection)
 try:
     from .a05_injection.xss_playwright import PlaywrightXSSScanner
     PLAYWRIGHT_XSS_AVAILABLE = True
 except ImportError:
     PLAYWRIGHT_XSS_AVAILABLE = False
+
+try:
+    from .a05_injection.sqli_playwright import PlaywrightSQLiScanner, DatabaseInfo
+    PLAYWRIGHT_SQLI_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_SQLI_AVAILABLE = False
 
 # ----- A06:2025 - Insecure Design -----
 from .a06_insecure_design.business_logic import BusinessLogicScanner
@@ -120,6 +128,7 @@ class EnhancedVulnerabilityScanner:
     4. Smart payload selection
     5. False positive reduction
     6. Automatic fallback to non-AI mode
+    7. Playwright-based XSS and SQLi detection
     """
     
     def __init__(self, scan_config: Dict = None):
@@ -138,6 +147,11 @@ class EnhancedVulnerabilityScanner:
                 - timeout: Default 20
                 - smart_payloads: Use AI-generated payloads (default: True)
                 - confidence_threshold: Minimum confidence to report (default: 0.6)
+                - playwright_xss: Enable Playwright XSS scanner (default: True)
+                - playwright_sqli: Enable Playwright SQLi scanner (default: True)
+                - playwright_enumerate_db: Enable database enumeration (default: True)
+                - headless: Run Playwright in headless mode (default: True)
+                - auth_token: Authentication token for authenticated scanning
         """
         self.config = scan_config or {}
         self.scan_depth = self.config.get('scan_depth', 'normal')
@@ -160,9 +174,26 @@ class EnhancedVulnerabilityScanner:
         # Progress callback
         self._progress_callback = None
 
+        # Playwright scanner settings
         self.playwright_xss_enabled = self.config.get('playwright_xss', True) and PLAYWRIGHT_XSS_AVAILABLE
+        self.playwright_sqli_enabled = self.config.get('playwright_sqli', True) and PLAYWRIGHT_SQLI_AVAILABLE
+        self.playwright_enumerate_db = self.config.get('playwright_enumerate_db', True)
         self.playwright_headless = self.config.get('headless', True)
         self._auth_token: Optional[str] = self.config.get('auth_token', None)
+        
+        # Database info extracted by SQLi scanner
+        self._extracted_db_info: Optional[DatabaseInfo] = None
+        
+        # Print Playwright availability
+        if PLAYWRIGHT_XSS_AVAILABLE:
+            print(f"[*] Playwright XSS Scanner: {'Enabled' if self.playwright_xss_enabled else 'Disabled'}")
+        else:
+            print(f"[*] Playwright XSS Scanner: Not Available (install playwright)")
+        
+        if PLAYWRIGHT_SQLI_AVAILABLE:
+            print(f"[*] Playwright SQLi Scanner: {'Enabled' if self.playwright_sqli_enabled else 'Disabled'}")
+        else:
+            print(f"[*] Playwright SQLi Scanner: Not Available (install playwright)")
         
         self.all_scanners = {
             # ==========================================
@@ -197,9 +228,9 @@ class EnhancedVulnerabilityScanner:
             # (Renamed from "Vulnerable Components", now covers CI/CD, deps)
             # ==========================================
             'known_cve': KnownCVEScanner(),
-            'dependency_check': DependencyCheckScanner(),      # NEW
-            'integrity_check': IntegrityCheckScanner(),        # NEW
-            'outdated_components': OutdatedComponentsScanner(), # NEW
+            'dependency_check': DependencyCheckScanner(),
+            'integrity_check': IntegrityCheckScanner(),
+            'outdated_components': OutdatedComponentsScanner(),
             
             # ==========================================
             # A04:2025 - Cryptographic Failures
@@ -254,7 +285,7 @@ class EnhancedVulnerabilityScanner:
             'code_integrity': CodeIntegrityScanner(),
             'cookie_integrity': CookieIntegrityScanner(),
             'deserialization': InsecureDeserializationScanner(),
-            # 'subresource_integrity': SubresourceIntegrityScanner(),
+            
             # ==========================================
             # A09:2025 - Security Logging and Alerting Failures
             # ==========================================
@@ -268,9 +299,9 @@ class EnhancedVulnerabilityScanner:
             # A10:2025 - Mishandling of Exceptional Conditions
             # (🆕 NEW CATEGORY - replaces SSRF which moved to A01)
             # ==========================================
-            'error_handling': ErrorHandlingScanner(),    # NEW
-            'fail_open': FailOpenScanner(),              # NEW
-            'resource_limits': ResourceLimitsScanner(),  # NEW
+            'error_handling': ErrorHandlingScanner(),
+            'fail_open': FailOpenScanner(),
+            'resource_limits': ResourceLimitsScanner(),
             
             # ==========================================
             # API Security (Additional)
@@ -295,7 +326,7 @@ class EnhancedVulnerabilityScanner:
                 'headers', 'cors', 'idor', 'path_traversal',
                 'ssrf', 'ssl_tls', 'jwt', 'rate_limiting',
                 'information_disclosure', 'cookie_security',
-                'error_handling'  # NEW
+                'error_handling'
             ],
             'full': list(self.all_scanners.keys()),  # ALL 35+ scanners
         }
@@ -318,6 +349,11 @@ class EnhancedVulnerabilityScanner:
             'smart_payloads_used': 0,
             'total_ai_calls': 0,
             'playwright_xss_findings': 0,
+            'playwright_sqli_findings': 0,
+            'auth_bypass_findings': 0,
+            'database_enumerated': False,
+            'tables_extracted': 0,
+            'data_extracted': False,
             'owasp_coverage': self._calculate_owasp_coverage()
         }
     
@@ -331,7 +367,7 @@ class EnhancedVulnerabilityScanner:
             'A05': ['sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi', 'ssti', 'ldapi', 'xpath', 'hhi', 'xxe', 'code_injection', 'crlf', 'el_injection'],
             'A06': ['rate_limiting', 'business_logic', 'clickjacking', 'file_upload', 'http_smuggling', 'race_condition', 'trust_boundary'],
             'A07': ['session_fixation', 'weak_password', 'brute_force', 'auth_bypass', 'default_credentials', 'mfa_check', 'session_management'],
-            'A08': ['deserialization', 'code_integrity', 'cookie_integrity', ],
+            'A08': ['deserialization', 'code_integrity', 'cookie_integrity'],
             'A09': ['log_injection', 'sensitive_log_data', 'log_file_exposure', 'insufficient_logging', 'alert_detection'],
             'A10': ['error_handling', 'fail_open', 'resource_limits'],
         }
@@ -378,6 +414,14 @@ class EnhancedVulnerabilityScanner:
         if self.executor:
             self.executor.set_progress_callback(callback)
     
+    def set_auth_token(self, token: str):
+        """Set authentication token for authenticated scanning"""
+        self._auth_token = token
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PLAYWRIGHT SCANNER METHODS
+    # ═══════════════════════════════════════════════════════════════════════════
+    
     async def _run_playwright_xss_parallel(
         self,
         crawl_results: Dict,
@@ -394,7 +438,7 @@ class EnhancedVulnerabilityScanner:
             return []
         
         try:
-            print(f"[Playwright] Starting browser-based XSS scan...")
+            print(f"\n[Playwright XSS] Starting browser-based XSS scan...")
             
             xss_scanner = PlaywrightXSSScanner(headless=self.playwright_headless)
             
@@ -408,19 +452,157 @@ class EnhancedVulnerabilityScanner:
             self.metrics['playwright_xss_findings'] = len(vulns)
             
             if vulns:
-                print(f"[Playwright] Found {len(vulns)} XSS vulnerabilities")
+                print(f"[Playwright XSS] Found {len(vulns)} XSS vulnerabilities")
             else:
-                print(f"[Playwright] Scan complete (no XSS found)")
+                print(f"[Playwright XSS] Scan complete (no XSS found)")
             
             return vulns
             
         except Exception as e:
-            print(f"[Playwright] Error: {str(e)[:100]}")
+            print(f"[Playwright XSS] Error: {str(e)[:100]}")
             return []
     
-    def set_auth_token(self, token: str):
-        """Set authentication token for authenticated scanning"""
-        self._auth_token = token
+    async def _run_playwright_sqli_parallel(
+        self,
+        crawl_results: Dict,
+        base_url: str
+    ) -> Tuple[List[Vulnerability], Optional[DatabaseInfo]]:
+        """
+        Run Playwright SQL Injection scanner in parallel with HTTP scanners.
+        This method is designed to run concurrently without blocking.
+        
+        Returns:
+            Tuple of (vulnerabilities, database_info)
+        """
+        if not PLAYWRIGHT_SQLI_AVAILABLE:
+            return [], None
+        
+        if not base_url:
+            return [], None
+        
+        try:
+            print(f"\n[Playwright SQLi] Starting browser-based SQL Injection scan...")
+            
+            sqli_scanner = PlaywrightSQLiScanner(
+                headless=self.playwright_headless,
+                verbose=True
+            )
+            
+            # Prepare URLs with parameters
+            urls_with_params = []
+            urls_data = crawl_results.get('urls', {})
+            
+            if isinstance(urls_data, dict):
+                for url in urls_data.keys():
+                    if '?' in url:  # Has query parameters
+                        urls_with_params.append(url)
+            elif isinstance(urls_data, list):
+                for url in urls_data:
+                    if '?' in url:
+                        urls_with_params.append(url)
+            
+            # Run the scan
+            vulns, db_info = await sqli_scanner.scan_with_browser(
+                base_url=base_url,
+                forms=crawl_results.get('forms', []),
+                urls_with_params=urls_with_params,
+                auth_token=self._auth_token,
+                enumerate_db=self.playwright_enumerate_db
+            )
+            
+            # Update metrics
+            self.metrics['playwright_sqli_findings'] = len(vulns)
+            
+            # Count auth bypass findings
+            auth_bypass_count = sum(1 for v in vulns if 'auth' in v.vuln_type.lower() or 'bypass' in v.vuln_type.lower())
+            self.metrics['auth_bypass_findings'] = auth_bypass_count
+            
+            if db_info:
+                self.metrics['database_enumerated'] = True
+                self.metrics['tables_extracted'] = len(db_info.tables)
+                self.metrics['data_extracted'] = bool(db_info.extracted_data)
+                self._extracted_db_info = db_info
+            
+            if vulns:
+                print(f"[Playwright SQLi] Found {len(vulns)} SQL Injection vulnerabilities")
+                if auth_bypass_count:
+                    print(f"[Playwright SQLi]   - {auth_bypass_count} authentication bypass(es)")
+                if db_info:
+                    print(f"[Playwright SQLi]   - Database: {db_info.db_type.value}")
+                    if db_info.tables:
+                        print(f"[Playwright SQLi]   - Extracted {len(db_info.tables)} table names")
+                    if db_info.extracted_data:
+                        print(f"[Playwright SQLi]   - Extracted data from {len(db_info.extracted_data)} tables")
+            else:
+                print(f"[Playwright SQLi] Scan complete (no SQLi found)")
+            
+            return vulns, db_info
+            
+        except Exception as e:
+            print(f"[Playwright SQLi] Error: {str(e)[:100]}")
+            import traceback
+            traceback.print_exc()
+            return [], None
+    
+    async def _run_all_playwright_scanners(
+        self,
+        crawl_results: Dict,
+        base_url: str
+    ) -> List[Vulnerability]:
+        """
+        Run all Playwright-based scanners in parallel.
+        
+        Returns:
+            Combined list of vulnerabilities from all Playwright scanners
+        """
+        tasks = []
+        task_names = []
+        
+        # Add XSS scanner task if enabled
+        if self.playwright_xss_enabled and 'xss' in self.active_scanners:
+            tasks.append(self._run_playwright_xss_parallel(crawl_results, base_url))
+            task_names.append("XSS")
+        
+        # Add SQLi scanner task if enabled
+        if self.playwright_sqli_enabled and 'sqli' in self.active_scanners:
+            tasks.append(self._run_playwright_sqli_parallel(crawl_results, base_url))
+            task_names.append("SQLi")
+        
+        if not tasks:
+            return []
+        
+        print(f"\n[Playwright] Running {len(tasks)} browser-based scanner(s): {', '.join(task_names)}")
+        
+        # Run all Playwright scanners in parallel
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        all_vulns = []
+        
+        for i, result in enumerate(results):
+            scanner_name = task_names[i]
+            
+            if isinstance(result, Exception):
+                print(f"[Playwright {scanner_name}] Error: {result}")
+                continue
+            
+            # Handle SQLi result (tuple)
+            if scanner_name == "SQLi":
+                if isinstance(result, tuple):
+                    vulns, db_info = result
+                    all_vulns.extend(vulns)
+                else:
+                    # Unexpected format
+                    print(f"[Playwright SQLi] Unexpected result format")
+            else:
+                # XSS result (list)
+                if isinstance(result, list):
+                    all_vulns.extend(result)
+        
+        return all_vulns
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # MAIN SCANNING METHOD
+    # ═══════════════════════════════════════════════════════════════════════════
     
     async def scan_async(
         self,
@@ -443,6 +625,8 @@ class EnhancedVulnerabilityScanner:
         print(f"  Active Scanners: {len(self.active_scanners)}")
         print(f"  Total Available: {len(self.all_scanners)}")
         print(f"  Parallel Workers: {self.max_concurrent_scanners}")
+        print(f"  Playwright XSS: {'Enabled' if self.playwright_xss_enabled else 'Disabled'}")
+        print(f"  Playwright SQLi: {'Enabled' if self.playwright_sqli_enabled else 'Disabled'}")
         print(f"{'='*60}\n")
         
         # Print OWASP coverage
@@ -523,8 +707,11 @@ class EnhancedVulnerabilityScanner:
             site_scanners_list = list(site_scanners.items())
             param_scanners_list = list(param_scanners.items())
             
-            # Execute all scans in parallel
-             # Create task for HTTP-based scanners
+            # ═══════════════════════════════════════════════════════════
+            # Execute all scans in parallel (HTTP + Playwright)
+            # ═══════════════════════════════════════════════════════════
+            
+            # Create task for HTTP-based scanners
             http_scan_task = asyncio.create_task(
                 self.executor.execute_all_scans(
                     session,
@@ -535,16 +722,22 @@ class EnhancedVulnerabilityScanner:
                 )
             )
             
-            # Create task for Playwright XSS scanner (if enabled)
+            # Check if any Playwright scanners are enabled
+            playwright_enabled = (
+                (self.playwright_xss_enabled and 'xss' in self.active_scanners) or
+                (self.playwright_sqli_enabled and 'sqli' in self.active_scanners)
+            )
+            
+            # Create task for Playwright scanners (if enabled)
             playwright_task = None
-            if self.playwright_xss_enabled and 'xss' in self.active_scanners:
+            if playwright_enabled:
                 playwright_task = asyncio.create_task(
-                    self._run_playwright_xss_parallel(crawl_results, base_url)
+                    self._run_all_playwright_scanners(crawl_results, base_url)
                 )
             
             # Gather results from all tasks
             if playwright_task:
-                print(f"[*] Running HTTP scanners and Playwright XSS in parallel...")
+                print(f"\n[*] Running HTTP scanners and Playwright scanners in parallel...")
                 
                 results = await asyncio.gather(
                     http_scan_task,
@@ -561,13 +754,13 @@ class EnhancedVulnerabilityScanner:
                 
                 # Process Playwright results
                 if isinstance(results[1], Exception):
-                    print(f"  [!] Playwright XSS error: {results[1]}")
+                    print(f"  [!] Playwright scan error: {results[1]}")
                     playwright_vulns = []
                 else:
                     playwright_vulns = results[1]
                 
                 print(f"\n[*] HTTP scanners found: {len(http_vulns)} issues")
-                print(f"[*] Playwright XSS found: {len(playwright_vulns)} issues")
+                print(f"[*] Playwright scanners found: {len(playwright_vulns)} issues")
                 
                 raw_vulnerabilities = http_vulns + playwright_vulns
             else:
@@ -576,14 +769,6 @@ class EnhancedVulnerabilityScanner:
             
             print(f"\n[*] Total findings: {len(raw_vulnerabilities)} potential issues")
             
-            # raw_vulnerabilities = await self.executor.execute_all_scans(
-            #     session,
-            #     targets,
-            #     site_scanners_list,
-            #     param_scanners_list,
-            #     base_url
-            # )
-
             # AI-enhanced validation and filtering
             validated_vulns = await self._ai_validate_vulnerabilities(
                 raw_vulnerabilities,
@@ -611,10 +796,29 @@ class EnhancedVulnerabilityScanner:
         print(f"  Validated Vulnerabilities: {len(unique_vulns)}")
         print(f"  AI Enhanced: {self.metrics['ai_enhanced_findings']}")
         print(f"  False Positives Filtered: {self.metrics['false_positives_filtered']}")
+        print(f"  Playwright XSS Findings: {self.metrics['playwright_xss_findings']}")
+        print(f"  Playwright SQLi Findings: {self.metrics['playwright_sqli_findings']}")
+        if self.metrics['auth_bypass_findings']:
+            print(f"  Auth Bypass Findings: {self.metrics['auth_bypass_findings']}")
+        if self.metrics['database_enumerated']:
+            print(f"  Database Enumerated: Yes")
+            print(f"    Tables Found: {self.metrics['tables_extracted']}")
+            print(f"    Data Extracted: {'Yes' if self.metrics['data_extracted'] else 'No'}")
         self._print_findings_by_owasp(unique_vulns)
         print(f"{'='*60}\n")
         
         return unique_vulns
+    
+    def get_extracted_database_info(self) -> Optional[Dict]:
+        """
+        Get database information extracted during SQLi scanning.
+        
+        Returns:
+            Dictionary with database info or None if not available
+        """
+        if self._extracted_db_info:
+            return self._extracted_db_info.to_dict()
+        return None
     
     def _print_owasp_coverage(self):
         """Print OWASP 2025 coverage summary"""
@@ -740,6 +944,15 @@ class EnhancedVulnerabilityScanner:
                 tech_stack.append('ASP.NET')
             if 'MSSQL' not in tech_stack:
                 tech_stack.append('MSSQL')
+        
+        # Check for Juice Shop (Node.js + SQLite)
+        if 'juice' in test_url.lower() or ':3000' in test_url:
+            if 'Node.js' not in tech_stack:
+                tech_stack.append('Node.js')
+            if 'SQLite' not in tech_stack:
+                tech_stack.append('SQLite')
+            if 'Angular' not in tech_stack:
+                tech_stack.append('Angular')
         
         # Check multiple URLs for patterns
         if isinstance(urls_data, dict):
@@ -892,7 +1105,10 @@ class EnhancedVulnerabilityScanner:
             description=enhanced_description,
             cwe_id=vuln.cwe_id,
             owasp_category=owasp_cat,
-            remediation=vuln.remediation
+            remediation=vuln.remediation,
+            request=vuln.request,
+            response=vuln.response,
+            http_message=vuln.http_message
         )
     
     def _prepare_targets(self, crawl_results: Dict) -> List[Dict]:
@@ -975,7 +1191,7 @@ class EnhancedVulnerabilityScanner:
         site_scanner_names = [
             'headers', 'cors', 'ssl_tls', 'debug', 'backup', 
             'cookie_security', 'information_disclosure',
-            'known_cve', 'dependency_check', '', 'outdated_components',
+            'known_cve', 'dependency_check', 'outdated_components',
             'weak_crypto', 'sensitive_data_exposure',
             'rate_limiting',
             'log_file_exposure', 'insufficient_logging', 'alert_detection',
@@ -990,7 +1206,7 @@ class EnhancedVulnerabilityScanner:
         site_scanner_names = [
             'headers', 'cors', 'ssl_tls', 'debug', 'backup', 
             'cookie_security', 'information_disclosure',
-            'known_cve', 'dependency_check', '', 'outdated_components',
+            'known_cve', 'dependency_check', 'outdated_components',
             'weak_crypto', 'sensitive_data_exposure',
             'rate_limiting',
             'error_handling', 'fail_open', 'resource_limits',
@@ -1037,30 +1253,33 @@ class EnhancedVulnerabilityScanner:
         return {
             'A01:2025 - Broken Access Control': [
                 'idor', 'path_traversal', 'forced_browsing', 
-                'privilege_escalation', 'jwt', 'ssrf'
+                'privilege_escalation', 'jwt', 'ssrf', 'csrf', 'open_redirect'
             ],
             'A02:2025 - Security Misconfiguration': [
                 'headers', 'cors', 'debug', 'backup', 'ssl_tls',
                 'cookie_security', 'information_disclosure'
             ],
             'A03:2025 - Software Supply Chain Failures': [
-                'known_cve', 'dependency_check', '', 'outdated_components'
+                'known_cve', 'dependency_check', 'integrity_check', 'outdated_components'
             ],
             'A04:2025 - Cryptographic Failures': [
                 'weak_crypto', 'sensitive_data_exposure'
             ],
             'A05:2025 - Injection': [
                 'sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi', 
-                'ssti', 'ldapi', 'xpath', 'hhi', 'xxe'
+                'ssti', 'ldapi', 'xpath', 'hhi', 'xxe',
+                'code_injection', 'crlf', 'el_injection'
             ],
             'A06:2025 - Insecure Design': [
-                'rate_limiting', 'brute_force'
+                'rate_limiting', 'business_logic', 'clickjacking',
+                'file_upload', 'http_smuggling', 'race_condition', 'trust_boundary'
             ],
             'A07:2025 - Authentication Failures': [
-                'session_fixation', 'weak_password', 'jwt', 'brute_force'
+                'session_fixation', 'weak_password', 'jwt', 'brute_force',
+                'auth_bypass', 'default_credentials', 'mfa_check', 'session_management'
             ],
             'A08:2025 - Software or Data Integrity Failures': [
-                'deserialization', ''
+                'deserialization', 'code_integrity', 'cookie_integrity'
             ],
             'A09:2025 - Security Logging and Alerting Failures': [
                 'log_injection', 'sensitive_log_data', 'log_file_exposure',
