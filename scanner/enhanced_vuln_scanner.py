@@ -221,7 +221,7 @@ class EnhancedVulnerabilityScanner:
             'cookie_security': CookieSecurityScanner(),
             'information_disclosure': InformationDisclosureScanner(),
             'config_exposure': ConfigExposureScanner(),
-            'default_credentials': DefaultCredentialsScanner(),
+            # 'default_creds_misconfig': DefaultCredentialsScanner(),
             
             # ==========================================
             # A03:2025 - Software Supply Chain Failures
@@ -273,7 +273,7 @@ class EnhancedVulnerabilityScanner:
             # ==========================================
             'auth_bypass': AuthBypassScanner(),
             'brute_force': BruteForceScanner(),
-            'default_credentials': DefaultCredentials07Scanner(),
+            # 'default_credentials': DefaultCredentials07Scanner(),
             'mfa_check': MFAScanner(),
             'session_fixation': SessionFixationScanner(),
             'session_management': SessionManagementScanner(),
@@ -361,7 +361,7 @@ class EnhancedVulnerabilityScanner:
         """Calculate OWASP 2025 category coverage"""
         owasp_mapping = {
             'A01': ['idor', 'path_traversal', 'forced_browsing', 'privilege_escalation', 'jwt', 'ssrf', 'csrf', 'open_redirect'],
-            'A02': ['headers', 'cors', 'debug', 'backup', 'ssl_tls', 'cookie_security', 'information_disclosure', 'config_exposure', 'default_credentials'],
+            'A02': ['headers', 'cors', 'debug', 'backup', 'ssl_tls', 'cookie_security', 'information_disclosure', 'config_exposure', 'default_creds_misconfig'],
             'A03': ['known_cve', 'dependency_check', 'integrity_check', 'outdated_components'],
             'A04': ['weak_crypto', 'sensitive_data_exposure'],
             'A05': ['sqli', 'nosqli', 'xss', 'dom_xss', 'cmdi', 'ssti', 'ldapi', 'xpath', 'hhi', 'xxe', 'code_injection', 'crlf', 'el_injection'],
@@ -1197,6 +1197,8 @@ class EnhancedVulnerabilityScanner:
             'log_file_exposure', 'insufficient_logging', 'alert_detection',
             'error_handling', 'fail_open', 'resource_limits',
             'graphql',
+            'default_creds_misconfig', 'default_credentials',
+            'config_exposure','integrity_check',
         ]
         return {k: v for k, v in self.active_scanners.items() 
                 if k in site_scanner_names}
@@ -1257,7 +1259,7 @@ class EnhancedVulnerabilityScanner:
             ],
             'A02:2025 - Security Misconfiguration': [
                 'headers', 'cors', 'debug', 'backup', 'ssl_tls',
-                'cookie_security', 'information_disclosure'
+                'cookie_security', 'information_disclosure', 'default_creds_misconfig'
             ],
             'A03:2025 - Software Supply Chain Failures': [
                 'known_cve', 'dependency_check', 'integrity_check', 'outdated_components'

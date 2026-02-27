@@ -85,7 +85,7 @@ SCANNER_CWE_MAP = {
     'BruteForceScanner': ['CWE-307'],
     'SessionFixationScanner': ['CWE-384'],
     'WeakPasswordPolicyScanner': ['CWE-521', 'CWE-598'],
-    'DefaultCredentialsScanner': ['CWE-798', 'CWE-259', 'CWE-1392', 'CWE-1393', 'CWE-258'],
+    'DefaultCredentials07Scanner': ['CWE-798', 'CWE-259', 'CWE-1392', 'CWE-1393', 'CWE-258'],
     'SessionManagementScanner': ['CWE-613', 'CWE-384', 'CWE-539'],
     'AuthBypassScanner': ['CWE-287', 'CWE-288', 'CWE-289', 'CWE-290', 'CWE-302', 'CWE-306'],
     'MFAScanner': ['CWE-308', 'CWE-287'],
