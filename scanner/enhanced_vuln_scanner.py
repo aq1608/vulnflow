@@ -161,7 +161,7 @@ class EnhancedVulnerabilityScanner:
         self.max_concurrent_scanners = self.config.get('max_concurrent_scanners', 8)
         self.max_concurrent_targets = self.config.get('max_concurrent_targets', 15)
         self.requests_per_second = self.config.get('requests_per_second', 75)
-        self.timeout = self.config.get('timeout', 20)
+        self.timeout = self.config.get('timeout', 15)
         
         # AI settings
         self.smart_payloads = self.config.get('smart_payloads', True)
@@ -328,7 +328,16 @@ class EnhancedVulnerabilityScanner:
                 'information_disclosure', 'cookie_security',
                 'error_handling'
             ],
-            'full': list(self.all_scanners.keys()),  # ALL 35+ scanners
+            'full': list(self.all_scanners.keys()),
+            'owasp': [
+                # All OWASP Top 10 related scanners
+                'sqli', 'nosqli', 'xss', 'cmdi', 'ssti', 'xxe',
+                'idor', 'path_traversal', 'forced_browsing', 'jwt',
+                'ssl_tls', 'weak_crypto', 'sensitive_data',
+                'headers', 'cors', 'debug', 'backup', 'cookie_security',
+                'rate_limiting', 'session_fixation', 'deserialization',
+                'ssrf', 'known_cve'
+            ],
         }
         
         # Select active scanners
@@ -710,18 +719,7 @@ class EnhancedVulnerabilityScanner:
             # ═══════════════════════════════════════════════════════════
             # Execute all scans in parallel (HTTP + Playwright)
             # ═══════════════════════════════════════════════════════════
-            
-            # Create task for HTTP-based scanners
-            http_scan_task = asyncio.create_task(
-                self.executor.execute_all_scans(
-                    session,
-                    targets,
-                    site_scanners_list,
-                    param_scanners_list,
-                    base_url
-                )
-            )
-            
+
             # Check if any Playwright scanners are enabled
             playwright_enabled = (
                 (self.playwright_xss_enabled and 'xss' in self.active_scanners) or
@@ -736,36 +734,38 @@ class EnhancedVulnerabilityScanner:
                 )
             
             # Gather results from all tasks
-            if playwright_task:
-                print(f"\n[*] Running HTTP scanners and Playwright scanners in parallel...")
-                
-                results = await asyncio.gather(
-                    http_scan_task,
-                    playwright_task,
-                    return_exceptions=True
+            playwright_vulns = []
+            if playwright_enabled:
+                print(f"[*] Running Playwright scanners...")
+                try:
+                    playwright_vulns = await playwright_task
+                except Exception as e:
+                    print(f"  [!] Playwright scan error: {e}")
+
+                print(f"[*] Waiting 3s for target to recover before browser scans...")
+                await asyncio.sleep(3)
+            
+            print(f"\n[*] Running HTTP scanners...")
+            # Create task for HTTP-based scanners
+            http_scan_task = asyncio.create_task(
+                self.executor.execute_all_scans(
+                    session,
+                    targets,
+                    site_scanners_list,
+                    param_scanners_list,
+                    base_url
                 )
-                
-                # Process HTTP scan results
-                if isinstance(results[0], Exception):
-                    print(f"  [!] HTTP scan error: {results[0]}")
-                    http_vulns = []
-                else:
-                    http_vulns = results[0]
-                
-                # Process Playwright results
-                if isinstance(results[1], Exception):
-                    print(f"  [!] Playwright scan error: {results[1]}")
-                    playwright_vulns = []
-                else:
-                    playwright_vulns = results[1]
-                
-                print(f"\n[*] HTTP scanners found: {len(http_vulns)} issues")
-                print(f"[*] Playwright scanners found: {len(playwright_vulns)} issues")
-                
-                raw_vulnerabilities = http_vulns + playwright_vulns
-            else:
-                # Just run HTTP scanners
-                raw_vulnerabilities = await http_scan_task
+            )
+            try:
+                http_vulns = await http_scan_task
+            except Exception as e:
+                print(f"  [!] HTTP scan error: {e}")
+                http_vulns = []
+            
+            print(f"\n[*] HTTP scanners found: {len(http_vulns)} issues")
+            print(f"[*] Playwright scanners found: {len(playwright_vulns)} issues")
+            
+            raw_vulnerabilities = playwright_vulns + http_vulns
             
             print(f"\n[*] Total findings: {len(raw_vulnerabilities)} potential issues")
             

